@@ -1306,7 +1306,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   lv_arc_set_range(ui.arc, ctx->min_tenths, ctx->max_tenths);
   lv_obj_set_style_bg_opa(ui.arc, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.arc, 0, LV_PART_MAIN);
-  lv_obj_set_style_arc_color(ui.arc, lv_color_hex(DARK_BACKGROUND_SECONDARY), LV_PART_MAIN);
+  lv_obj_set_style_arc_color(ui.arc, lv_color_hex(DARK_TRACK_BACKGROUND), LV_PART_MAIN);
   lv_obj_set_style_arc_rounded(ui.arc, true, LV_PART_MAIN);
   lv_obj_set_style_arc_rounded(ui.arc, true, LV_PART_INDICATOR);
   lv_obj_set_style_bg_opa(ui.arc, LV_OPA_TRANSP, LV_PART_KNOB);
