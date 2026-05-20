@@ -12,7 +12,7 @@ struct SubpageBtn {
   std::string icon_on;
   std::string sensor;     // sensor entity, cover/internal mode, or action name
   std::string unit;
-  std::string type;       // button type: "" (toggle), action, sensor, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, lock, alarm, media, push, internal, subpage
+  std::string type;       // button type: "" (toggle), action, sensor, door_window, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, lock, alarm, media, push, internal, subpage
   std::string precision;  // decimal places for sensor display; "text" = text sensor mode
   std::string options;    // comma-delimited card options
 };
@@ -35,6 +35,7 @@ inline std::string compact_subpage_type(const std::string &code) {
   if (code == "D") return "calendar";
   if (code == "T") return "timezone";
   if (code == "S") return "sensor";
+  if (code == "X") return "door_window";
   if (code == "W") return "weather";
   if (code == "F") return "weather_forecast";
   if (code == "B") return "fan_switch";
@@ -141,11 +142,25 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     b.icon_on.clear();
     if (b.icon.empty() || b.icon == "Auto" || b.icon == "Chevron Down") b.icon = "Flash";
   }
+  if (b.type == "door_window") {
+    b.entity.clear();
+    b.unit.clear();
+    b.precision = normalize_door_window_subtype(b.precision);
+    if (b.icon.empty() || b.icon == "Auto") b.icon = door_window_closed_icon_name(b.precision);
+    if (b.icon_on.empty() || b.icon_on == "Auto") b.icon_on = door_window_open_icon_name(b.precision);
+    b.options = door_window_card_options_normalized(b.options);
+  }
   ParsedCfg p;
   p.type = b.type;
   p.precision = b.precision;
-  if (!b.type.empty() && b.type != "action" && b.type != "alarm" && b.type != "climate" && b.type != "garage" && !fan_card_type(b.type) && !card_large_numbers_supported(p)) {
+  if (!b.type.empty() && b.type != "action" && b.type != "alarm" &&
+      b.type != "climate" && b.type != "garage" &&
+      b.type != "sensor" && b.type != "door_window" &&
+      !fan_card_type(b.type) && !card_large_numbers_supported(p)) {
     b.options.clear();
+  }
+  if (b.type == "sensor") {
+    b.options = sensor_card_options_normalized(b.options, b.precision);
   }
   return b;
 }
