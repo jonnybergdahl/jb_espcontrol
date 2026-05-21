@@ -17,6 +17,9 @@ esp32:
   variant: esp32p4
   flash_size: 16MB
   engineering_sample: true
+  # ESPHome 2026.5 tightened ESP32 task watchdog handling. The P4 display
+  # stack can spend more than the default 5s in early startup.
+  watchdog_timeout: 30s
   framework:
     type: esp-idf
     version: 5.5.2
@@ -30,9 +33,6 @@ esp32:
       # HTTPS firmware checks need more stack on ESP32-P4; the default main
       # task stack can trip the stack protector during mbedTLS setup.
       CONFIG_ESP_MAIN_TASK_STACK_SIZE: "8192"
-      # ESPHome 2026.5 tightened ESP32 task watchdog handling. The P4 display
-      # stack can spend more than the default 5s in early startup.
-      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "30"
       CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC: "y"
 
 # ---------------------------------------------------------------------------
