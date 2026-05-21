@@ -146,19 +146,41 @@ registerButtonType("alarm", {
     );
     panel.appendChild(entityField.field);
 
-    panel.appendChild(helpers.textField(
-      "Label", helpers.idPrefix + "alarm-label", b.label, "e.g. House Alarm", "label", true).field);
+    function setActive(buttons, value) {
+      for (var key in buttons) buttons[key].classList.toggle("active", key === value);
+    }
 
-    panel.appendChild(helpers.iconPickerField(
+    var labelControl = helpers.textField(
+      "Label", helpers.idPrefix + "alarm-label", b.label, "e.g. House Alarm", "label", true);
+
+    function setLabelVisible(value) {
+      labelControl.field.style.display = value === "name" ? "" : "none";
+    }
+
+    var labelDisplayField = helpers.segmentControl([
+      ["name", "Name"],
+      ["status", "Status"],
+    ], alarmLabelDisplayMode(b), function (value) {
+      setActive(labelDisplayField.buttons, value);
+      setAlarmLabelDisplayMode(b, value);
+      helpers.saveField("options", b.options);
+      setLabelVisible(value);
+      scheduleRender();
+    });
+    panel.appendChild(helpers.fieldWithControl("Label Display", null, labelDisplayField.segment));
+    setLabelVisible(alarmLabelDisplayMode(b));
+    panel.appendChild(labelControl.field);
+
+    var iconControl = helpers.iconPickerField(
       helpers.idPrefix + "alarm-icon-picker", helpers.idPrefix + "alarm-icon",
       b.icon || "Security", function (opt) {
         b.icon = opt || "Security";
         helpers.saveField("icon", b.icon);
       }, "Icon"
-    ));
+    );
 
-    function setActive(buttons, value) {
-      for (var key in buttons) buttons[key].classList.toggle("active", key === value);
+    function setIconVisible(value) {
+      iconControl.style.display = value === "static" ? "" : "none";
     }
 
     var iconDisplayField = helpers.segmentControl([
@@ -168,20 +190,12 @@ registerButtonType("alarm", {
       setActive(iconDisplayField.buttons, value);
       setAlarmIconDisplayMode(b, value);
       helpers.saveField("options", b.options);
+      setIconVisible(value);
       scheduleRender();
     });
     panel.appendChild(helpers.fieldWithControl("Icon Display", null, iconDisplayField.segment));
-
-    var labelDisplayField = helpers.segmentControl([
-      ["name", "Name"],
-      ["status", "Status"],
-    ], alarmLabelDisplayMode(b), function (value) {
-      setActive(labelDisplayField.buttons, value);
-      setAlarmLabelDisplayMode(b, value);
-      helpers.saveField("options", b.options);
-      scheduleRender();
-    });
-    panel.appendChild(helpers.fieldWithControl("Label Display", null, labelDisplayField.segment));
+    setIconVisible(alarmIconDisplayMode(b));
+    panel.appendChild(iconControl);
 
     function savePinOptions() {
       setAlarmPinRequired(b, "arm", armPinToggle.input.checked);
