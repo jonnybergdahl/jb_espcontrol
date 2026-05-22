@@ -18,7 +18,7 @@ lvgl:
       - label:
           text: "-°C / -°C"
           id: temperatures
-          text_font: clockbar_font_lt
+          text_font: font_roboto_regular_22_default
           align: top_left
           x: 8
           y: 8
@@ -29,7 +29,7 @@ lvgl:
       - label:
           text: "--:--"
           id: display_time
-          text_font: clockbar_font_lt
+          text_font: font_roboto_regular_22_default
           align: top_mid
           x: 0
           y: 8
@@ -56,7 +56,7 @@ lvgl:
             - label:
                 id: network_status_icon_label
                 text: "\U000F0928"
-                text_font: network_status_font_lt
+                text_font: font_mdi_21_network
                 align: center
                 text_align: center
                 text_color: 0xFFFFFF

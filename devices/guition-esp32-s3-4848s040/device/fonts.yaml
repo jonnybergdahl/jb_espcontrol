@@ -10,21 +10,21 @@
 font:
   # Button icons (44px, proportional to 66px on the 720x720 square panel)
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
-    id: icon_font_sm
+    id: font_mdi_44_icons
     size: 44
     bpp: 4
     glyphs: !include ../../../common/assets/icon_glyphs.yaml
 
   # Climate card icons (25% smaller than main page icons)
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
-    id: climate_card_icon_font_sm
+    id: font_mdi_33_icons
     size: 33
     bpp: 4
     glyphs: !include ../../../common/assets/icon_glyphs.yaml
 
   # Climate modal mode/value text (smaller than normal button labels)
   - file: "gfonts://Roboto"
-    id: climate_option_value_font_sm
+    id: font_roboto_regular_18_text
     size: 18
     bpp: 4
     glyphs: !include ../../../common/assets/text_glyphs.yaml
@@ -34,7 +34,7 @@ font:
 
   # Sensor value large number (44px, proportional to 66px on the 720x720 square panel)
   - file: "gfonts://Roboto@Light"
-    id: statistics_font_sm
+    id: font_roboto_light_44_digits
     size: 44
     bpp: 4
     glyphs:
@@ -43,7 +43,7 @@ font:
 
   # Large-card sensor values (2.5x the regular sensor value font)
   - file: "gfonts://Roboto@Thin"
-    id: statistics_font_sm_xl
+    id: font_roboto_thin_110_digits
     size: 110
     bpp: 4
     glyphs:
@@ -52,7 +52,7 @@ font:
 
   # Media now-playing titles (sensor value size, full text glyph coverage)
   - file: "gfonts://Roboto@Light"
-    id: media_title_font_sm
+    id: font_roboto_light_34_text
     size: 34
     bpp: 4
     glyphs: !include ../../../common/assets/text_glyphs.yaml
@@ -62,14 +62,14 @@ font:
 
   # Top bar network status icon
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
-    id: network_status_font_sm
+    id: font_mdi_19_network
     size: 19
     bpp: 4
     glyphs: !include ../../../common/assets/network_status_glyphs.yaml
 
   # Setup screen icons (61px, proportional to 92px on the 720x720 square panel)
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
-    id: icon_font_setup_sm
+    id: font_mdi_61_setup_icons
     size: 61
     bpp: 4
     glyphs:

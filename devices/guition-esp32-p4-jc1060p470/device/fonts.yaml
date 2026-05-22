@@ -9,21 +9,21 @@
 font:
   # Main page icons: 44px on the 480px S3 reference scaled to this 600px short side
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
-    id: icon_font_600
+    id: font_mdi_55_icons
     size: 55
     bpp: 4
     glyphs: !include ../../../common/assets/icon_glyphs.yaml
 
   # Climate card icons (25% smaller than main page icons)
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
-    id: climate_card_icon_font_600
+    id: font_mdi_41_icons
     size: 41
     bpp: 4
     glyphs: !include ../../../common/assets/icon_glyphs.yaml
 
   # Main page: large statistics / sensor values, 15% larger than the shared 48px font
   - file: "gfonts://Roboto@Light"
-    id: statistics_font_600
+    id: font_roboto_light_55_digits
     size: 55
     bpp: 4
     glyphs:
@@ -32,7 +32,7 @@ font:
 
   # Main page: large-card sensor values (2.5x the regular sensor value font)
   - file: "gfonts://Roboto@Thin"
-    id: statistics_font_600_xl
+    id: font_roboto_thin_138_digits
     size: 138
     bpp: 4
     glyphs:
@@ -41,14 +41,14 @@ font:
 
   # Top bar network status icon
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
-    id: network_status_font_lt
+    id: font_mdi_19_network
     size: 19
     bpp: 4
     glyphs: !include ../../../common/assets/network_status_glyphs.yaml
 
   # Volume/climate modal: 96px on the 480px S3 reference scaled to this 600px short side
   - file: "gfonts://Roboto@Thin"
-    id: volume_modal_number_font_600
+    id: font_roboto_thin_120_text
     size: 120
     bpp: 4
     glyphs: !include ../../../common/assets/text_glyphs.yaml
@@ -58,7 +58,7 @@ font:
 
   # Volume/climate modal labels: 22px on the 480px S3 reference scaled to this 600px short side
   - file: "gfonts://Roboto"
-    id: volume_modal_label_font_600
+    id: font_roboto_regular_28_basic
     size: 28
     bpp: 4
     glyphs:
@@ -66,7 +66,7 @@ font:
 
   # Setup screen icons: 61px on the 480px S3 reference scaled to this 600px short side
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
-    id: icon_font_setup_600
+    id: font_mdi_76_setup_icons
     size: 76
     bpp: 4
     glyphs:

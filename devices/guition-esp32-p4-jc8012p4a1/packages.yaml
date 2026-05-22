@@ -12,19 +12,19 @@ substitutions:
   screen_width: "1280"
   screen_height: "800"
   content_width: "760"
-  setup_icon_font_id: icon_font_setup_800
-  setup_title_font_id: setup_title_font
-  setup_body_font_id: setup_body_font
+  setup_icon_font_id: font_mdi_102_setup_icons
+  setup_title_font_id: font_roboto_light_40_setup_text
+  setup_body_font_id: font_roboto_regular_24_setup_text
   setup_pad_row: "20"
   setup_loading_pad_row: "40"
   setup_action_button_width: "200"
   setup_action_button_height: "56"
   setup_action_button_radius: "12"
-  icon_font: icon_font_800
-  label_font: label_font_lt
-  media_title_font: media_title_font_lt
-  unit_font: label_font_lt
-  sensor_value_font: statistics_font_lt
+  icon_font: font_mdi_56_icons
+  label_font: font_roboto_regular_24_text
+  media_title_font: font_roboto_light_46_text
+  unit_font: font_roboto_regular_24_text
+  sensor_value_font: font_roboto_light_52_digits
   padding: 18px
   radius: 11px
   main_page_pad_top: "42"

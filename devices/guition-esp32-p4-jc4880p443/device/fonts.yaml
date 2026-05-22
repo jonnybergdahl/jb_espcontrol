@@ -9,21 +9,21 @@
 font:
   # Main page icons: 44px on the S3 reference scaled for the larger 4.3-inch portrait card grid
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
-    id: icon_font_480
+    id: font_mdi_62_icons
     size: 62
     bpp: 4
     glyphs: !include ../../../common/assets/icon_glyphs.yaml
 
   # Climate card icons (25% smaller than main page icons)
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
-    id: climate_card_icon_font_480
+    id: font_mdi_47_icons
     size: 47
     bpp: 4
     glyphs: !include ../../../common/assets/icon_glyphs.yaml
 
   # Button labels (31px)
   - file: "gfonts://Roboto"
-    id: label_font_lg
+    id: font_roboto_regular_31_text
     size: 31
     bpp: 4
     glyphs: !include ../../../common/assets/text_glyphs.yaml
@@ -33,7 +33,7 @@ font:
 
   # Climate modal option titles, smaller than the option value line
   - file: "gfonts://Roboto"
-    id: climate_option_title_font_lg
+    id: font_roboto_regular_24_text
     size: 24
     bpp: 4
     glyphs: !include ../../../common/assets/text_glyphs.yaml
@@ -43,7 +43,7 @@ font:
 
   # Sensor value large number (62px)
   - file: "gfonts://Roboto@Light"
-    id: statistics_font_lg
+    id: font_roboto_light_62_digits
     size: 62
     bpp: 4
     glyphs:
@@ -52,7 +52,7 @@ font:
 
   # Large-card sensor values (2.5x the regular sensor value font)
   - file: "gfonts://Roboto@Thin"
-    id: statistics_font_lg_xl
+    id: font_roboto_thin_155_digits
     size: 155
     bpp: 4
     glyphs:
@@ -61,7 +61,7 @@ font:
 
   # Media now-playing titles (sensor value size, full text glyph coverage)
   - file: "gfonts://Roboto@Light"
-    id: media_title_font_lg
+    id: font_roboto_light_56_text
     size: 56
     bpp: 4
     glyphs: !include ../../../common/assets/text_glyphs.yaml
@@ -71,7 +71,7 @@ font:
 
   # Volume/climate modal: 96px on the S3 reference scaled for the larger 4.3-inch portrait card grid
   - file: "gfonts://Roboto@Thin"
-    id: volume_modal_number_font_lg
+    id: font_roboto_thin_135_text
     size: 135
     bpp: 4
     glyphs: !include ../../../common/assets/text_glyphs.yaml
@@ -81,7 +81,7 @@ font:
 
   # Top bar clock and temperature (25px)
   - file: "gfonts://Roboto"
-    id: clockbar_font_lg
+    id: font_roboto_regular_25_default
     size: 25
     bpp: 4
     extras:
@@ -90,14 +90,14 @@ font:
 
   # Top bar network status icon
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
-    id: network_status_font_lg
+    id: font_mdi_23_network
     size: 23
     bpp: 4
     glyphs: !include ../../../common/assets/network_status_glyphs.yaml
 
   # Setup screen icons: 61px on the S3 reference scaled for the larger 4.3-inch portrait setup layout
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
-    id: icon_font_setup_480
+    id: font_mdi_86_setup_icons
     size: 86
     bpp: 4
     glyphs:

@@ -8,14 +8,14 @@
 font:
   # Button icons (52px)
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
-    id: icon_font
+    id: font_mdi_48_icons
     size: 48
     bpp: 4
     glyphs: !include icon_glyphs.yaml
 
   # Setup screen icons (64px)
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
-    id: icon_font_setup
+    id: font_mdi_64_setup_icons
     size: 64
     bpp: 4
     glyphs:

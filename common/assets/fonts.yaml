@@ -5,7 +5,7 @@
 font:
   # Main page: large statistics / sensor values
   - file: "gfonts://Roboto@Light"
-    id: statistics_font
+    id: font_roboto_light_48_digits
     size: 48
     bpp: 4
     glyphs:
@@ -14,7 +14,7 @@ font:
 
   # Volume/climate modal: large numeric value
   - file: "gfonts://Roboto@Thin"
-    id: volume_modal_number_font
+    id: font_roboto_thin_96_text
     size: 96
     bpp: 4
     glyphs: !include text_glyphs.yaml
@@ -24,7 +24,7 @@ font:
 
   # Main page: media now-playing titles (sensor value size, full text glyph coverage)
   - file: "gfonts://Roboto@Light"
-    id: media_title_font
+    id: font_roboto_light_43_text
     size: 43
     bpp: 4
     glyphs: !include text_glyphs.yaml
@@ -34,7 +34,7 @@ font:
 
   # Main page: button labels
   - file: "gfonts://Roboto"
-    id: label_font
+    id: font_roboto_regular_22_text
     size: 22
     bpp: 4
     glyphs: !include text_glyphs.yaml
@@ -44,7 +44,7 @@ font:
 
   # Climate modal option titles: smaller first line above the option value
   - file: "gfonts://Roboto"
-    id: climate_option_title_font
+    id: font_roboto_regular_20_text
     size: 20
     bpp: 4
     glyphs: !include text_glyphs.yaml
@@ -54,7 +54,7 @@ font:
 
   # Top bar: clock and temperature
   - file: "gfonts://Roboto"
-    id: clockbar_font
+    id: font_roboto_regular_20_default
     size: 20
     bpp: 4
     extras:
@@ -63,7 +63,7 @@ font:
 
   # Setup screens: titles (40px light)
   - file: "gfonts://Roboto@Light"
-    id: setup_title_font
+    id: font_roboto_light_40_setup_text
     size: 40
     bpp: 4
     glyphs: !include setup_text_glyphs.yaml
@@ -73,7 +73,7 @@ font:
 
   # Setup screens: body text (24px)
   - file: "gfonts://Roboto"
-    id: setup_body_font
+    id: font_roboto_regular_24_setup_text
     size: 24
     bpp: 4
     glyphs: !include setup_text_glyphs.yaml
