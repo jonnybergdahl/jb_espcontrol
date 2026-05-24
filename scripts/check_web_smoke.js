@@ -378,6 +378,61 @@ const fanSwitchPreview = hooks.buttonTypePreviewFor("fan_switch", {
 });
 assert(fanSwitchPreview.labelHtml.includes("mdi-fan"), "fan switch preview uses the fan badge");
 
+const sliderPreview = hooks.buttonTypePreviewFor("slider", {
+  entity: "light.strip",
+  label: "Strip",
+  icon: "Lightbulb",
+  icon_on: "Lightbulb On",
+  type: "slider",
+});
+assert(sliderPreview.iconHtml.includes("sp-slider-preview"), "slider preview uses the slider track");
+assert(sliderPreview.labelHtml.includes("mdi-tune-vertical-variant"), "slider preview uses the tune badge");
+
+const lightBrightnessPreview = hooks.buttonTypePreviewFor("light_brightness", {
+  entity: "light.living_room",
+  label: "Living Room",
+  icon: "Lightbulb Outline",
+  icon_on: "Lightbulb",
+  type: "light_brightness",
+});
+assert(lightBrightnessPreview.iconHtml.includes("sp-slider-preview"), "light brightness preview uses the slider track");
+assert(lightBrightnessPreview.labelHtml.includes("mdi-tune-vertical-variant"), "light brightness preview uses the tune badge");
+
+const coverSliderPreview = hooks.buttonTypePreviewFor("cover", {
+  entity: "cover.office_blind",
+  label: "Office Blind",
+  icon: "Blinds",
+  icon_on: "Blinds Open",
+  sensor: "tilt",
+  type: "cover",
+});
+assert(coverSliderPreview.iconHtml.includes("sp-slider-preview"), "cover slider preview uses the slider track");
+assert(coverSliderPreview.labelHtml.includes("mdi-blinds-horizontal"), "cover slider preview uses the cover badge");
+
+const coverCommandPreview = hooks.buttonTypePreviewFor("cover", {
+  entity: "cover.office_blind",
+  label: "Open",
+  icon: "Blinds Open",
+  icon_on: "Auto",
+  sensor: "open",
+  type: "cover",
+});
+assert(!coverCommandPreview.iconHtml.includes("sp-slider-preview"), "cover command preview uses icon-only layout");
+assert(coverCommandPreview.iconHtml.includes("mdi-blinds-open"), "cover command preview uses the command icon");
+assert(coverCommandPreview.labelHtml.includes("mdi-blinds-horizontal"), "cover command preview uses the cover badge");
+
+const coverSetPositionPreview = hooks.buttonTypePreviewFor("cover", {
+  entity: "cover.office_blind",
+  label: "50%",
+  icon: "Blinds",
+  icon_on: "Auto",
+  sensor: "set_position",
+  unit: "50",
+  type: "cover",
+});
+assert(!coverSetPositionPreview.iconHtml.includes("sp-slider-preview"), "cover set-position preview uses command layout");
+assert(coverSetPositionPreview.labelHtml.includes("mdi-blinds-horizontal"), "cover set-position preview uses the cover badge");
+
 const mediaVolumePreview = hooks.buttonTypePreviewFor("media", {
   entity: "media_player.kitchen",
   label: "Kitchen",

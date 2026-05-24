@@ -207,15 +207,37 @@ function renderCardTextField(panel, b, helpers, metadata) {
   return control;
 }
 
+function renderCardNumberField(panel, b, helpers, metadata) {
+  metadata = metadata || {};
+  var number = metadata.number || metadata;
+  var inputId = helpers.idPrefix + (number.idSuffix || "number");
+  var field = document.createElement("div");
+  field.className = "sp-field";
+  field.appendChild(helpers.fieldLabel(number.label || "Number", inputId));
+  var input = document.createElement("input");
+  input.type = "number";
+  input.className = "sp-input";
+  input.id = inputId;
+  if (number.min != null) input.min = String(number.min);
+  if (number.max != null) input.max = String(number.max);
+  if (number.step != null) input.step = String(number.step);
+  input.placeholder = number.placeholder || "";
+  input.value = cardMetadataValue(number.value, b, helpers) || "";
+  field.appendChild(input);
+  panel.appendChild(field);
+  return { field: field, input: input };
+}
+
 function renderCardIconPicker(panel, b, helpers, metadata) {
   metadata = metadata || {};
   var icon = metadata.icon || metadata;
   var fieldName = icon.field || "icon";
   var fallback = cardMetadataValue(icon.fallback, b, helpers) || "Auto";
+  var currentValue = icon.value != null ? cardMetadataValue(icon.value, b, helpers) : (b[fieldName] || fallback);
   var picker = helpers.iconPickerField(
     helpers.idPrefix + (icon.pickerIdSuffix || fieldName + "-picker"),
     helpers.idPrefix + (icon.idSuffix || fieldName),
-    b[fieldName] || fallback,
+    currentValue,
     function (opt) {
       b[fieldName] = opt || fallback;
       helpers.saveField(fieldName, b[fieldName]);

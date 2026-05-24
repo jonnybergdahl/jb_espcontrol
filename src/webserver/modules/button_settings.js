@@ -548,6 +548,7 @@ function renderButtonSettings(forceOpen) {
     syncCardLargeNumbersToggle: syncCardLargeNumbersToggle,
     renderCardEntityField: renderCardEntityField,
     renderCardTextField: renderCardTextField,
+    renderCardNumberField: renderCardNumberField,
     renderCardIconPicker: renderCardIconPicker,
     renderCardOptionToggle: renderCardOptionToggle,
     renderCardSegmentControl: renderCardSegmentControl,
