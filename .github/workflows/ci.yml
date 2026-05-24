@@ -109,10 +109,7 @@ jobs:
           npm ci --prefer-offline --cache "${NPM_CACHE}"
           bash scripts/prune_actions_cache.sh "${NPM_CACHE}" "${ESPCONTROL_NPM_CACHE_MAX_MB}" --strategy reset
 
-      - run: python3 scripts/build.py --check
-      - run: python3 scripts/generate_device_slots.py --check
-      - run: python3 scripts/check_icon_groups.py
-      - run: npm run check:config
+      - run: npm run check:all
 
   docs:
     name: Build Docs
