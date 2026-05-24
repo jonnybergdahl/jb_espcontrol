@@ -107,29 +107,20 @@ jobs:
           cp "${BUILD_DIR}/firmware.factory.bin" output/${{ matrix.slug }}.factory.bin
           cp "${BUILD_DIR}/firmware.bin" output/${{ matrix.slug }}.ota.bin
 
-          OTA_MD5=$(md5sum output/${{ matrix.slug }}.ota.bin | cut -d ' ' -f 1)
           VERSION="${{ github.event.release.tag_name || github.ref_name }}"
-
-          cat > output/${{ matrix.slug }}.manifest.json << EOF
-          {
-            "name": "Espcontrol",
-            "version": "${VERSION}",
-            "home_assistant_domain": "esphome",
-            "builds": [
-              {
-                "chipFamily": "${{ matrix.chip }}",
-                "parts": [
-                  { "path": "${{ matrix.slug }}.factory.bin", "offset": 0 }
-                ],
-                "ota": {
-                  "path": "${{ matrix.slug }}.ota.bin",
-                  "md5": "${OTA_MD5}",
-                  "release_url": "https://github.com/jtenniswood/espcontrol/releases/tag/${VERSION}"
-                }
-              }
-            ]
-          }
-          EOF
+          python3 espcontrol-${{ matrix.slug }}/scripts/firmware_release.py manifest \
+            --slug "${{ matrix.slug }}" \
+            --chip "${{ matrix.chip }}" \
+            --version "${VERSION}" \
+            --factory "output/${{ matrix.slug }}.factory.bin" \
+            --ota "output/${{ matrix.slug }}.ota.bin" \
+            --out "output/${{ matrix.slug }}.manifest.json"
+          python3 espcontrol-${{ matrix.slug }}/scripts/firmware_release.py verify-files \
+            --slug "${{ matrix.slug }}" \
+            --version "${VERSION}" \
+            --manifest "output/${{ matrix.slug }}.manifest.json" \
+            --factory "output/${{ matrix.slug }}.factory.bin" \
+            --ota "output/${{ matrix.slug }}.ota.bin"
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v7
