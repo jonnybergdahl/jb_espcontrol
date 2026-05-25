@@ -52,7 +52,7 @@ var LIGHT_TEMPERATURE_CARD_METADATA = {
   entity: {
     label: "Entity",
     placeholder: "e.g. light.living_room",
-    domains: ["light"],
+    domains: function () { return cardContractDomains("light_temperature"); },
   },
   labelField: {
     label: "Label",
@@ -92,10 +92,13 @@ function renderLightControlTypeField(panel, b, helpers) {
 }
 
 registerButtonType("light_temperature", {
-  label: "Lights",
-  allowInSubpage: true,
+  label: function () { return cardContractCardLabel("light_temperature"); },
+  allowInSubpage: function () { return cardContractAllowInSubpage("light_temperature"); },
   hideLabel: true,
-  pickerKey: "light_brightness",
+  pickerKey: function () { return cardContractPickerKey("light_temperature"); },
+  experimental: function () { return cardContractExperimental("light_temperature"); },
+  hidden: function () { return cardContractHidden("light_temperature"); },
+  defaultConfig: function () { return cardContractDefaultConfig("light_temperature"); },
   isAvailable: function () {
     return false;
   },

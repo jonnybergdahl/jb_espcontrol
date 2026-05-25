@@ -26,7 +26,7 @@ function sliderCardMetadata(opts) {
       label: "Entity",
       idSuffix: "entity",
       placeholder: opts.entityPlaceholder,
-      domains: opts.entityDomains,
+      domains: function () { return cardContractDomains(opts.type); },
       bindName: "entity",
       rerender: true,
       requiredMessage: "Add an entity before saving.",
@@ -76,10 +76,14 @@ function sliderCardMetadata(opts) {
 function sliderTypeFactory(opts) {
   var metadata = sliderCardMetadata(opts);
   return {
-    label: opts.label,
-    allowInSubpage: true,
+    label: function () { return cardContractCardLabel(opts.type); },
+    allowInSubpage: function () { return cardContractAllowInSubpage(opts.type); },
+    pickerKey: function () { return cardContractPickerKey(opts.type); },
+    experimental: function () { return cardContractExperimental(opts.type); },
+    hidden: function () { return cardContractHidden(opts.type); },
     hideLabel: !!opts.hideLabel,
     labelPlaceholder: opts.placeholder,
+    defaultConfig: function () { return cardContractDefaultConfig(opts.type); },
     cardMetadata: metadata,
     onSelect: function (b) {
       b.sensor = ""; b.unit = "";
@@ -326,10 +330,9 @@ function sliderTypeFactory(opts) {
 }
 
 registerButtonType("light_brightness", sliderTypeFactory({
-  label: "Lights",
+  type: "light_brightness",
   placeholder: "e.g. Living Room",
   entityPlaceholder: "e.g. light.living_room",
-  entityDomains: ["light"],
   defaultIcon: "Lightbulb Outline",
   defaultIconOn: "Lightbulb",
   fallbackLabel: "Brightness",
@@ -346,10 +349,9 @@ registerButtonType("light_brightness", sliderTypeFactory({
 }));
 
 registerButtonType("slider", sliderTypeFactory({
-  label: "Slider",
+  type: "slider",
   placeholder: "e.g. Living Room",
   entityPlaceholder: "e.g. light.living_room",
-  entityDomains: ["light", "fan"],
   defaultIcon: "Auto",
   defaultIconOn: "Auto",
   fallbackLabel: "Slider",
@@ -362,10 +364,9 @@ registerButtonType("slider", sliderTypeFactory({
 }));
 
 registerButtonType("cover", sliderTypeFactory({
-  label: "Cover",
+  type: "cover",
   placeholder: "e.g. Office Blind",
   entityPlaceholder: "e.g. cover.office_blind",
-  entityDomains: ["cover"],
   defaultIcon: "Blinds",
   defaultIconOn: "Blinds Open",
   fallbackLabel: "Cover",

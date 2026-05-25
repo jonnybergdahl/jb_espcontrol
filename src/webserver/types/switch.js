@@ -88,7 +88,7 @@ var LIGHT_SWITCH_CARD_METADATA = {
   entity: {
     label: "Entity",
     placeholder: "e.g. light.living_room",
-    domains: ["light"],
+    domains: function () { return cardContractDomains("light_switch"); },
     requiredMessage: "Add a light entity before saving.",
   },
   labelField: {
@@ -269,10 +269,12 @@ registerButtonType("", {
 });
 
 registerButtonType("light_switch", {
-  label: "Lights",
-  allowInSubpage: true,
+  label: function () { return cardContractCardLabel("light_switch"); },
+  allowInSubpage: function () { return cardContractAllowInSubpage("light_switch"); },
   hideLabel: true,
-  pickerKey: "light_brightness",
+  pickerKey: function () { return cardContractPickerKey("light_switch"); },
+  experimental: function () { return cardContractExperimental("light_switch"); },
+  hidden: function () { return cardContractHidden("light_switch"); },
   defaultConfig: function () { return cardContractDefaultConfig("light_switch"); },
   isAvailable: function () {
     return false;

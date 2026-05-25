@@ -247,9 +247,19 @@ function assertButtonTypeSpecBacked(type, description) {
   assert.strictEqual(spec.experimental, hooks.cardContractExperimental(type), `${description} experimental flag is spec-backed`);
   assert.strictEqual(spec.hidden, hooks.cardContractHidden(type), `${description} hidden flag is spec-backed`);
   assert.deepStrictEqual(Array.from(spec.domains), Array.from(hooks.cardContractDomains(type)), `${description} entity domains are spec-backed`);
+  assert.deepStrictEqual(
+    buttonShape(hooks.buttonTypeDefaultConfig(type)),
+    buttonShape(hooks.cardContractDefaultConfig(type)),
+    `${description} default config is spec-backed`
+  );
 }
 assertButtonTypeSpecBacked("", "switch card");
 assertButtonTypeSpecBacked("sensor", "sensor card");
+assertButtonTypeSpecBacked("slider", "slider card");
+assertButtonTypeSpecBacked("cover", "cover card");
+assertButtonTypeSpecBacked("light_brightness", "light brightness card");
+assertButtonTypeSpecBacked("light_switch", "light switch card");
+assertButtonTypeSpecBacked("light_temperature", "light temperature card");
 const switchOptionSpecs = hooks.cardContractOptions("");
 const switchOptionByName = Object.fromEntries(switchOptionSpecs.map((option) => [option.name, option]));
 assert.deepStrictEqual(
