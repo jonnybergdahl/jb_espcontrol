@@ -101,6 +101,19 @@ inline const lv_font_t *display_media_title_font(const DisplayProfile &profile) 
   return profile.fonts.media_title ? profile.fonts.media_title : profile.fonts.sensor;
 }
 
+inline const lv_font_t *display_optional_media_title_font(const DisplayProfile &profile) {
+  return profile.fonts.media_title;
+}
+
+inline const lv_font_t *display_media_title_font_or(
+    const DisplayProfile &profile, const lv_font_t *fallback) {
+  return profile.fonts.media_title ? profile.fonts.media_title : fallback;
+}
+
+inline const lv_font_t *display_switch_confirmation_message_font(const DisplayProfile &profile) {
+  return profile.fonts.media_title ? profile.fonts.media_title : profile.fonts.volume_label;
+}
+
 inline const lv_font_t *display_volume_number_font(const DisplayProfile &profile) {
   return profile.fonts.volume_number ? profile.fonts.volume_number : profile.fonts.sensor;
 }
@@ -139,4 +152,3 @@ inline bool display_modal_is_square_size(lv_coord_t width, lv_coord_t height) {
 inline bool display_modal_is_4848_size(lv_coord_t width, lv_coord_t height) {
   return width == 480 && height == 480;
 }
-

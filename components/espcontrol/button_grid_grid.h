@@ -108,6 +108,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
                               const CardPalette &palette,
                               int row_span = 1,
                               int col_span = 1) {
+  const DisplayProfile display = display_profile_from_grid_config(cfg);
   apply_button_colors(s.btn, palette.has_on, palette.on_val,
     palette.has_off, palette.off_val);
   if (s.unit_lbl) lv_obj_set_style_translate_y(s.unit_lbl, 0, LV_PART_MAIN);
@@ -120,9 +121,9 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     if (p.sensor.empty()) return;
     setup_sensor_card(s, p, palette.has_sensor_color, palette.sensor_val);
     if (row_span == 2 && col_span == 2 &&
-        sensor_large_numbers_enabled(p) && cfg.sp_large_sensor_font) {
+        sensor_large_numbers_enabled(p) && display_large_sensor_font(display)) {
       apply_large_sensor_number_style(
-        s, cfg.sp_large_sensor_font, cfg.large_sensor_unit_offset_percent);
+        s, display_large_sensor_font(display), display_large_sensor_unit_offset_percent(display));
     }
     return;
   }
@@ -134,18 +135,18 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   if (p.type == "calendar") {
     setup_calendar_card(s, p, palette.has_sensor_color, palette.sensor_val);
     if (row_span == 2 && col_span == 2 &&
-        card_large_numbers_enabled(p) && cfg.sp_large_sensor_font) {
+        card_large_numbers_enabled(p) && display_large_sensor_font(display)) {
       apply_large_sensor_number_style(
-        s, cfg.sp_large_sensor_font, cfg.large_sensor_unit_offset_percent);
+        s, display_large_sensor_font(display), display_large_sensor_unit_offset_percent(display));
     }
     return;
   }
   if (p.type == "timezone") {
     setup_timezone_card(s, p, palette.has_sensor_color, palette.sensor_val);
     if (row_span == 2 && col_span == 2 &&
-        card_large_numbers_enabled(p) && cfg.sp_large_sensor_font) {
+        card_large_numbers_enabled(p) && display_large_sensor_font(display)) {
       apply_large_sensor_number_style(
-        s, cfg.sp_large_sensor_font, cfg.large_sensor_unit_offset_percent);
+        s, display_large_sensor_font(display), display_large_sensor_unit_offset_percent(display));
     }
     return;
   }
@@ -153,9 +154,9 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     setup_weather_forecast_card(s, p, palette.has_sensor_color, palette.sensor_val,
       cfg.width_compensation_percent);
     if (row_span == 2 && col_span == 2 &&
-        card_large_numbers_enabled(p) && cfg.sp_large_sensor_font) {
+        card_large_numbers_enabled(p) && display_large_sensor_font(display)) {
       apply_large_sensor_number_style(
-        s, cfg.sp_large_sensor_font, cfg.large_sensor_unit_offset_percent);
+        s, display_large_sensor_font(display), display_large_sensor_unit_offset_percent(display));
     }
     return;
   }
@@ -168,7 +169,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     return;
   }
   if (subpage_parent_sensor_state_enabled(p)) {
-    setup_subpage_parent_state_card(s, p, cfg.sp_sensor_font);
+    setup_subpage_parent_state_card(s, p, display_sensor_font(display));
     return;
   }
   if (p.type == "lock") {
@@ -216,8 +217,8 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
       palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR,
       palette.has_off ? palette.off_val : DEFAULT_OFF_COLOR,
       palette.has_sensor_color ? palette.sensor_val : DEFAULT_TERTIARY_COLOR,
-      cfg.sp_sensor_font,
-      cfg.media_title_font ? cfg.media_title_font : cfg.sp_sensor_font,
+      display_sensor_font(display),
+      display_media_title_font(display),
       cfg.width_compensation_percent,
       row_span, col_span);
     return;
@@ -225,7 +226,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   if (p.type == "climate") {
     setup_climate_control_button(
       s.btn, s.icon_lbl, s.sensor_container, s.sensor_lbl, s.unit_lbl,
-      s.text_lbl, p, cfg.icon_font);
+      s.text_lbl, p, display_icon_font(display));
     return;
   }
   if (brightness_slider_type(p.type) || p.type == "cover") {
@@ -319,6 +320,7 @@ inline LockCardCtx *bind_lock_status_card(BtnSlot &s, const ParsedCfg &p) {
 inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
                                       const GridConfig &cfg,
                                       int row_span = 1) {
+  const DisplayProfile display = display_profile_from_grid_config(cfg);
   std::string mode = media_card_mode(p.sensor);
   lv_coord_t pad = lv_obj_get_style_radius(s.btn, LV_PART_MAIN) + 4;
 
@@ -329,7 +331,7 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
     if (ctx->artist_lbl) apply_width_compensation(ctx->artist_lbl, cfg.width_compensation_percent);
     setup_media_now_playing_layout(
       s.btn, s.icon_lbl, ctx->title_lbl, ctx->artist_lbl,
-      cfg.media_title_font ? cfg.media_title_font : cfg.sp_sensor_font, pad,
+      display_media_title_font(display), pad,
       row_span == 1, ctx->play_pause_background,
       ctx->progress_slider ? pad : 0, false);
     if (ctx->progress_slider) slider_refresh_geometry(ctx->progress_slider);
@@ -556,10 +558,10 @@ inline void grid_phase2(
     lv_obj_t *main_page_obj) {
   ESP_LOGI("sensors", "Phase 2: subscriptions + subpages start (%lu ms)", esphome::millis());
   set_display_temperature_unit(cfg.temperature_unit, cfg.timezone);
+  const DisplayProfile display = display_profile_from_grid_config(cfg);
   set_width_compensation_vertical_axis(cfg.width_compensation_vertical);
-  set_switch_confirmation_message_font(
-    cfg.media_title_font ? cfg.media_title_font : cfg.volume_label_font);
-  set_switch_confirmation_icon_font(cfg.icon_font);
+  set_switch_confirmation_message_font(display_switch_confirmation_message_font(display));
+  set_switch_confirmation_icon_font(display_icon_font(display));
   int NS = bounded_grid_slots(cfg.num_slots);
   int COLS = cfg.cols > 0 ? cfg.cols : 1;
   configure_grid_layout(main_page_obj, NS, COLS);
@@ -687,10 +689,10 @@ inline void grid_phase2(
           has_on ? on_val : DEFAULT_SLIDER_COLOR,
           has_off ? off_val : DEFAULT_OFF_COLOR,
           has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
-          cfg.icon_font,
-          cfg.volume_number_font ? cfg.volume_number_font : cfg.sp_sensor_font,
-          cfg.sp_sensor_font,
-          cfg.media_title_font,
+          display_icon_font(display),
+          display_volume_number_font(display),
+          display_sensor_font(display),
+          display_optional_media_title_font(display),
           lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
           lv_obj_get_style_text_color(s.text_lbl, LV_PART_MAIN),
           cfg.width_compensation_percent,
@@ -713,14 +715,11 @@ inline void grid_phase2(
         alarm_action_card->icon_lbl = s.icon_lbl;
         alarm_action_card->grid_page = main_page_obj;
         alarm_action_card->label_font = lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN);
-        alarm_action_card->key_label_font = cfg.media_title_font
-          ? cfg.media_title_font
-          : alarm_action_card->label_font;
+        alarm_action_card->key_label_font =
+          display_media_title_font_or(display, alarm_action_card->label_font);
         alarm_action_card->pin_label_font = alarm_action_card->key_label_font;
-        alarm_action_card->icon_font = cfg.icon_font;
-        alarm_action_card->arming_title_font = cfg.volume_number_font
-          ? cfg.volume_number_font
-          : cfg.sp_sensor_font;
+        alarm_action_card->icon_font = display_icon_font(display);
+        alarm_action_card->arming_title_font = display_volume_number_font(display);
         alarm_action_card->on_color = has_on ? on_val : DEFAULT_SLIDER_COLOR;
         alarm_action_card->off_color = has_off ? off_val : DEFAULT_OFF_COLOR;
         alarm_action_card->tertiary_color = has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR;
@@ -746,7 +745,7 @@ inline void grid_phase2(
           has_off ? off_val : DEFAULT_OFF_COLOR,
           has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
           lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
-          cfg.icon_font,
+          display_icon_font(display),
           cfg.width_compensation_percent);
         subscribe_fan_card_state(ctx);
       }
@@ -830,15 +829,15 @@ inline void grid_phase2(
             s.btn, s.text_lbl, p, has_on ? on_val : DEFAULT_SLIDER_COLOR,
             has_off ? off_val : DEFAULT_OFF_COLOR,
             has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
-            cfg.sp_sensor_font,
-            cfg.volume_number_font ? cfg.volume_number_font : cfg.sp_sensor_font,
-            cfg.volume_label_font
-              ? cfg.volume_label_font
+            display_sensor_font(display),
+            display_volume_number_font(display),
+            display_volume_label_font(display)
+              ? display_volume_label_font(display)
               : lv_obj_get_style_text_font(s.unit_lbl, LV_PART_MAIN),
-            cfg.volume_label_font
-              ? cfg.volume_label_font
+            display_volume_label_font(display)
+              ? display_volume_label_font(display)
               : lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
-            cfg.icon_font,
+            display_icon_font(display),
             cfg.volume_width_compensation_percent,
             s.sensor_lbl, s.unit_lbl,
             cfg.pause_home_idle, cfg.resume_home_idle);
@@ -863,24 +862,22 @@ inline void grid_phase2(
           has_on ? on_val : DEFAULT_SLIDER_COLOR,
           has_off ? off_val : DEFAULT_OFF_COLOR,
           has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
-          cfg.volume_number_font ? cfg.volume_number_font : cfg.sp_sensor_font,
-          cfg.volume_label_font
-            ? cfg.volume_label_font
+          display_volume_number_font(display),
+          display_volume_label_font(display)
+            ? display_volume_label_font(display)
             : lv_obj_get_style_text_font(s.unit_lbl, LV_PART_MAIN),
-          cfg.volume_label_font
-            ? cfg.volume_label_font
+          display_volume_label_font(display)
+            ? display_volume_label_font(display)
             : lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
-          cfg.climate_option_title_font
-            ? cfg.climate_option_title_font
+          display_climate_option_title_font(display)
+            ? display_climate_option_title_font(display)
             : lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
-          cfg.climate_option_value_font
-            ? cfg.climate_option_value_font
+          display_climate_option_value_font(display)
+            ? display_climate_option_value_font(display)
             : lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
-          cfg.media_title_font
-            ? cfg.media_title_font
-            : lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
-          cfg.climate_card_icon_font ? cfg.climate_card_icon_font : cfg.icon_font,
-          cfg.icon_font,
+          display_media_title_font_or(display, lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN)),
+          display_climate_card_icon_font(display),
+          display_icon_font(display),
           cfg.volume_width_compensation_percent,
           s.sensor_container, s.sensor_lbl, s.unit_lbl);
         subscribe_climate_control_state(ctx);
@@ -1038,7 +1035,7 @@ inline void grid_phase2(
     lv_obj_set_grid_cell(back_btn, LV_GRID_ALIGN_STRETCH, sp_ord.back_pos % COLS, sp_ord.back_col_span,
       LV_GRID_ALIGN_STRETCH, sp_ord.back_pos / COLS, sp_ord.back_row_span);
     BtnSlot back_slot = create_dynamic_card_slot(
-      back_btn, sp_icon_fnt, cfg.sp_sensor_font, sp_btn_fnt, sp_txt_color);
+      back_btn, sp_icon_fnt, display_sensor_font(display), sp_btn_fnt, sp_txt_color);
     apply_width_compensation(back_slot.icon_lbl, cfg.width_compensation_percent);
     apply_slot_text_width_compensation(back_slot, cfg.width_compensation_percent);
     lv_label_set_text(back_slot.icon_lbl, "\U000F0141");
@@ -1103,7 +1100,7 @@ inline void grid_phase2(
       int cs = sp_ord.col_span[bn - 1] > 0 ? sp_ord.col_span[bn - 1] : 1;
       lv_obj_set_grid_cell(sb_btn, LV_GRID_ALIGN_STRETCH, col, cs, LV_GRID_ALIGN_STRETCH, row, rs);
       BtnSlot sub_slot = create_dynamic_card_slot(
-        sb_btn, sp_icon_fnt, cfg.sp_sensor_font, sp_btn_fnt, sp_txt_color);
+        sb_btn, sp_icon_fnt, display_sensor_font(display), sp_btn_fnt, sp_txt_color);
       apply_width_compensation(sub_slot.icon_lbl, cfg.width_compensation_percent);
       apply_slot_text_width_compensation(sub_slot, cfg.width_compensation_percent);
       setup_card_visual(sub_slot, sb_cfg, cfg, palette, rs, cs);
@@ -1188,10 +1185,10 @@ inline void grid_phase2(
             palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR,
             palette.has_off ? palette.off_val : DEFAULT_OFF_COLOR,
             palette.has_sensor_color ? palette.sensor_val : DEFAULT_TERTIARY_COLOR,
-            cfg.icon_font,
-            cfg.volume_number_font ? cfg.volume_number_font : cfg.sp_sensor_font,
-            cfg.sp_sensor_font,
-            cfg.media_title_font,
+            display_icon_font(display),
+            display_volume_number_font(display),
+            display_sensor_font(display),
+            display_optional_media_title_font(display),
             lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
             lv_obj_get_style_text_color(sub_slot.text_lbl, LV_PART_MAIN),
             cfg.width_compensation_percent,
@@ -1221,14 +1218,11 @@ inline void grid_phase2(
           alarm_action_card->icon_lbl = sub_slot.icon_lbl;
           alarm_action_card->grid_page = sub_scr;
           alarm_action_card->label_font = lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN);
-          alarm_action_card->key_label_font = cfg.media_title_font
-            ? cfg.media_title_font
-            : alarm_action_card->label_font;
+          alarm_action_card->key_label_font =
+            display_media_title_font_or(display, alarm_action_card->label_font);
           alarm_action_card->pin_label_font = alarm_action_card->key_label_font;
-          alarm_action_card->icon_font = cfg.icon_font;
-          alarm_action_card->arming_title_font = cfg.volume_number_font
-            ? cfg.volume_number_font
-            : cfg.sp_sensor_font;
+          alarm_action_card->icon_font = display_icon_font(display);
+          alarm_action_card->arming_title_font = display_volume_number_font(display);
           alarm_action_card->on_color = has_on ? on_val : DEFAULT_SLIDER_COLOR;
           alarm_action_card->off_color = has_off ? off_val : DEFAULT_OFF_COLOR;
           alarm_action_card->tertiary_color = has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR;
@@ -1256,7 +1250,7 @@ inline void grid_phase2(
             has_off ? off_val : DEFAULT_OFF_COLOR,
             has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
             lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
-            cfg.icon_font,
+            display_icon_font(display),
             cfg.width_compensation_percent);
           subscribe_fan_card_state(ctx);
           add_parent_indicator(sb_cfg.entity);
@@ -1351,15 +1345,15 @@ inline void grid_phase2(
               has_on ? on_val : DEFAULT_SLIDER_COLOR,
               has_off ? off_val : DEFAULT_OFF_COLOR,
               has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
-              cfg.sp_sensor_font,
-              cfg.volume_number_font ? cfg.volume_number_font : cfg.sp_sensor_font,
-              cfg.volume_label_font
-                ? cfg.volume_label_font
+              display_sensor_font(display),
+              display_volume_number_font(display),
+              display_volume_label_font(display)
+                ? display_volume_label_font(display)
                 : lv_obj_get_style_text_font(sub_slot.unit_lbl, LV_PART_MAIN),
-              cfg.volume_label_font
-                ? cfg.volume_label_font
+              display_volume_label_font(display)
+                ? display_volume_label_font(display)
                 : lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
-              cfg.icon_font,
+              display_icon_font(display),
               cfg.volume_width_compensation_percent,
               sub_slot.sensor_lbl, sub_slot.unit_lbl,
               cfg.pause_home_idle, cfg.resume_home_idle);
@@ -1396,24 +1390,22 @@ inline void grid_phase2(
             has_on ? on_val : DEFAULT_SLIDER_COLOR,
             has_off ? off_val : DEFAULT_OFF_COLOR,
             has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
-            cfg.volume_number_font ? cfg.volume_number_font : cfg.sp_sensor_font,
-            cfg.volume_label_font
-              ? cfg.volume_label_font
+            display_volume_number_font(display),
+            display_volume_label_font(display)
+              ? display_volume_label_font(display)
               : lv_obj_get_style_text_font(sub_slot.unit_lbl, LV_PART_MAIN),
-            cfg.volume_label_font
-              ? cfg.volume_label_font
+            display_volume_label_font(display)
+              ? display_volume_label_font(display)
               : lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
-            cfg.climate_option_title_font
-              ? cfg.climate_option_title_font
+            display_climate_option_title_font(display)
+              ? display_climate_option_title_font(display)
               : lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
-            cfg.climate_option_value_font
-              ? cfg.climate_option_value_font
+            display_climate_option_value_font(display)
+              ? display_climate_option_value_font(display)
               : lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
-            cfg.media_title_font
-              ? cfg.media_title_font
-              : lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
-            cfg.climate_card_icon_font ? cfg.climate_card_icon_font : cfg.icon_font,
-            cfg.icon_font,
+            display_media_title_font_or(display, lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN)),
+            display_climate_card_icon_font(display),
+            display_icon_font(display),
             cfg.volume_width_compensation_percent,
             sub_slot.sensor_container, sub_slot.sensor_lbl, sub_slot.unit_lbl);
           subscribe_climate_control_state(ctx);
