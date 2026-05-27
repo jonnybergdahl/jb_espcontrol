@@ -284,9 +284,11 @@ inline void subscribe_control_availability(lv_obj_t *visual_obj, lv_obj_t *input
   ha_subscribe_state(
     entity_id,
     std::function<void(esphome::StringRef)>(
-      [visual_obj, input_obj, disable_interaction](esphome::StringRef state) {
+      [visual_obj, input_obj, entity_id, disable_interaction](esphome::StringRef state) {
         apply_control_availability(
-          visual_obj, input_obj, !ha_state_unavailable_ref(state), disable_interaction);
+          visual_obj, input_obj,
+          !ha_entity_state_unavailable_ref(entity_id, state),
+          disable_interaction);
       })
   );
 }
