@@ -2,7 +2,7 @@
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
-// Experimental Home Assistant todo card controls.
+// Home Assistant todo card controls.
 
 constexpr uint32_t TODO_CARD_CTX_MAGIC = 0x544F444F;  // TODO
 constexpr int TODO_MAX_ITEMS = 8;

@@ -188,7 +188,7 @@ assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("fan_switch", 
 assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("fan_oscillate", true, true), false);
 assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("option_select", false, false), false);
 assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("option_select", false, true), false);
-assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("todo", false, false), false);
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("todo", false, false), true);
 assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("todo", true, false), true);
 assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("todo", true, true), true);
 assert(
@@ -196,8 +196,8 @@ assert(
   "saved fan cards remain represented while hidden"
 );
 assert(
-  !hooks.buttonTypePickerKeysForExperimental(false, false, "todo").includes("todo"),
-  "saved todo cards stay hidden in the picker while developer flag is off"
+  hooks.buttonTypePickerKeysForExperimental(false, false, "todo").includes("todo"),
+  "todo cards appear in the picker without the developer flag"
 );
 
 assert.strictEqual(hooks.normalizeTemperatureUnit("fahrenheit"), "\u00b0F");

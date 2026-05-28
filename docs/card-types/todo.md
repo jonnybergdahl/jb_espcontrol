@@ -1,26 +1,21 @@
 ---
 title: Todo Cards
 description:
-  How to use experimental Todo cards on your EspControl panel with Home Assistant todo lists.
+  How to use Todo cards on your EspControl panel with Home Assistant todo lists.
 ---
 
 # Todo
 
 Todo cards show a Home Assistant `todo.*` list on the panel. The card shows the number of incomplete items. Tapping the card opens the list, where each visible item can be tapped to mark it complete.
 
-::: warning Experimental
-Todo cards are currently hidden behind **Developer Experimental Features** while they are being tested.
-:::
-
 ## Setting Up a Todo Card
 
-1. Enable **Developer Experimental Features**.
-2. Select a card and change its type to **Todo**.
-3. Choose an **Entity**, such as `todo.shopping`.
-4. Set **Label** if you want a custom list name.
-5. Use **Card Label** to choose whether the card shows the list name or the incomplete item count.
-6. Use **Status** to choose whether the card shows the selected icon or the item counter.
-7. Use **Show Completed Items** to choose whether checked-off items stay visible in a completed section.
+1. Select a card and change its type to **Todo**.
+2. Choose an **Entity**, such as `todo.shopping`.
+3. Set **Label** if you want a custom list name.
+4. Use **Card Label** to choose whether the card shows the list name or the incomplete item count.
+5. Use **Status** to choose whether the card shows the selected icon, the item counter, or the top task.
+6. Use **Show Completed Items** to choose whether checked-off items stay visible in a completed section.
 
 ## How It Works
 
@@ -37,7 +32,8 @@ Make sure the device is allowed to perform Home Assistant actions. See [Home Ass
 
 This first test version is intentionally small:
 
-- it shows incomplete items only
+- it shows incomplete items, with completed items optional
 - it can complete items
-- it cannot add, delete, rename, or show completed items
+- it can optionally show and restore completed items
+- it cannot add, delete, or rename items
 - very long lists are capped on the panel to protect memory

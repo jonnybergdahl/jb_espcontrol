@@ -1,4 +1,4 @@
-// Experimental Home Assistant todo card.
+// Home Assistant todo card.
 var TODO_CARD_METADATA = {
   entity: {
     label: "Entity",

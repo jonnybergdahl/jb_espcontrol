@@ -881,7 +881,6 @@ var CARD_CONTRACT_CARDS = {
   "todo": {
     "label": "Todo",
     "allowInSubpage": true,
-    "experimental": "developer",
     "domains": [
       "todo"
     ],

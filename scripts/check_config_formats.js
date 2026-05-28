@@ -1576,18 +1576,18 @@ assert.strictEqual(hooks.todoCardLabelShowsCount({ type: "todo", options: "" }),
 assert.strictEqual(hooks.todoCardLabelShowsCount({ type: "todo", options: "label_display=count" }), true, "todo label can show item count");
 assert.strictEqual(hooks.todoCardShowsCompletedItems({ type: "todo", options: "" }), true, "todo shows completed items by default");
 assert.strictEqual(hooks.todoCardShowsCompletedItems({ type: "todo", options: "completed_display=hide" }), false, "todo can hide completed items");
-assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("todo", false, false), false, "todo picker hidden without developer flag");
-assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("todo", true, false), true, "todo picker visible with developer flag");
-assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("todo", true, true), true, "todo picker visible in subpages with developer flag");
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("todo", false, false), true, "todo picker visible without developer flag");
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("todo", true, false), true, "todo picker remains visible with developer flag");
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("todo", true, true), true, "todo picker visible in subpages");
 assert.strictEqual(
   loadHooks("?developer=experimental").buttonTypeVisibleInPickerForExperimental("todo", false, false),
   true,
-  "todo picker visible with developer URL flag"
+  "todo picker remains visible with developer URL flag"
 );
 assert.strictEqual(
   hooks.buttonTypePickerKeysForExperimental(false, false, "todo").indexOf("todo") >= 0,
-  false,
-  "saved todo type stays hidden while developer flag is off");
+  true,
+  "saved todo type remains visible without developer flag");
 
 const subpageStateOff = buttonShape({
   label: "Windows",
