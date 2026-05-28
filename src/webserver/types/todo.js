@@ -124,7 +124,7 @@ registerButtonType("todo", {
     syncIconPicker();
   },
   renderPreview: function (b, helpers) {
-    var label = todoCardLabelShowsCount(b) ? "3 items" : (b.label || b.entity || "Todo");
+    var label = todoCardLabelShowsCount(b) ? "3" : (b.label || b.entity || "Todo");
     var statusMode = todoCardStatusMode(b);
     return {
       iconHtml: statusMode === "icon"

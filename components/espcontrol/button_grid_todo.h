@@ -86,7 +86,7 @@ inline std::string todo_card_label(TodoCardCtx *ctx) {
 
 inline std::string todo_card_count_label(TodoCardCtx *ctx) {
   if (!ctx || !ctx->available || ctx->count_text.empty() || ctx->count_text == "--") return "--";
-  return ctx->count_text + (ctx->count_text == "1" ? " item" : " items");
+  return ctx->count_text;
 }
 
 inline void todo_apply_card_text(TodoCardCtx *ctx) {
@@ -102,13 +102,7 @@ inline void todo_apply_card_text(TodoCardCtx *ctx) {
     return;
   }
   if (ctx->value_lbl) lv_label_set_text(ctx->value_lbl, ctx->available ? ctx->count_text.c_str() : "--");
-  if (ctx->unit_lbl) {
-    const char *unit = "";
-    if (ctx->available && !ctx->count_text.empty() && ctx->count_text != "--") {
-      unit = ctx->count_text == "1" ? "item" : "items";
-    }
-    lv_label_set_text(ctx->unit_lbl, unit);
-  }
+  if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, "");
 }
 
 inline void setup_todo_card(BtnSlot &s, const ParsedCfg &p, uint32_t secondary_color) {

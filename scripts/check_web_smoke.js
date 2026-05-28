@@ -350,7 +350,8 @@ const todoLabelCountPreview = hooks.buttonTypePreviewFor("todo", {
   type: "todo",
   options: "label_display=count",
 });
-assert(todoLabelCountPreview.labelHtml.includes("3 items"), "todo preview can show item count in the label");
+assert(todoLabelCountPreview.labelHtml.includes(">3<"), "todo preview can show item count in the label");
+assert(!todoLabelCountPreview.labelHtml.includes("items"), "todo preview label count does not include item text");
 assert(!todoLabelCountPreview.labelHtml.includes("Shopping"), "todo count-label preview hides the static label");
 assert.deepStrictEqual(Array.from(hooks.buttonTypeRuntimeSpec("todo").domains), ["todo"], "todo entity field is limited to todo entities");
 
