@@ -427,7 +427,7 @@
         "topbar": {
           "height": 7.5,
           "padding": "0.83cqw",
-          "fontSize": 3.5
+          "fontSize": 3.75
         },
         "grid": {
           "top": 8.5,
@@ -441,8 +441,8 @@
         "btn": {
           "radius": 1.67,
           "padding": 2.92,
-          "iconSize": 9.17,
-          "labelSize": 3.72,
+          "iconSize": 9.58,
+          "labelSize": 3.96,
           "labelLines": 2,
           "labelLinesDouble": 3
         },
@@ -452,12 +452,12 @@
         "sensorBadge": {
           "top": 2.08,
           "right": 2.08,
-          "fontSize": 3.12
+          "fontSize": 3.33
         },
         "subpageBadge": {
           "bottom": 2.08,
           "right": 2.08,
-          "fontSize": 3.75
+          "fontSize": 4
         }
       },
       "firmware": {
