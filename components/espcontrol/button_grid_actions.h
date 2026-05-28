@@ -61,7 +61,7 @@ inline void send_action_card_action(const ParsedCfg &p) {
   ha_action_send(req);
 }
 
-using WebhookHeaders = std::list<esphome::http_request::Header>;
+using WebhookHeaders = std::vector<esphome::http_request::Header>;
 using WebhookSender = std::function<bool(const std::string &, const std::string &,
                                          const std::string &, const WebhookHeaders &)>;
 

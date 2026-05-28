@@ -68,7 +68,7 @@ script:
             id(home_screen_idle_suspended) = false;
             id(home_screen_idle_check).execute();
           };
-          register_webhook_sender([](const std::string &url, const std::string &method, const std::string &body, const std::list<esphome::http_request::Header> &headers) {
+          register_webhook_sender([](const std::string &url, const std::string &method, const std::string &body, const std::vector<esphome::http_request::Header> &headers) {
             auto response = id(http_req).start(url, method, body, headers);
             if (response == nullptr) {
               ESP_LOGW("webhook", "Webhook request failed to start: %s", url.c_str());
@@ -145,7 +145,7 @@ esphome:
               id(home_screen_idle_suspended) = false;
               id(home_screen_idle_check).execute();
             };
-            register_webhook_sender([](const std::string &url, const std::string &method, const std::string &body, const std::list<esphome::http_request::Header> &headers) {
+            register_webhook_sender([](const std::string &url, const std::string &method, const std::string &body, const std::vector<esphome::http_request::Header> &headers) {
               auto response = id(http_req).start(url, method, body, headers);
               if (response == nullptr) {
                 ESP_LOGW("webhook", "Webhook request failed to start: %s", url.c_str());
@@ -287,7 +287,7 @@ esphome:
               id(home_screen_idle_suspended) = false;
               id(home_screen_idle_check).execute();
             };
-            register_webhook_sender([](const std::string &url, const std::string &method, const std::string &body, const std::list<esphome::http_request::Header> &headers) {
+            register_webhook_sender([](const std::string &url, const std::string &method, const std::string &body, const std::vector<esphome::http_request::Header> &headers) {
               auto response = id(http_req).start(url, method, body, headers);
               if (response == nullptr) {
                 ESP_LOGW("webhook", "Webhook request failed to start: %s", url.c_str());

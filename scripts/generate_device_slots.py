@@ -285,7 +285,7 @@ def cfg_lines(device: dict) -> list[str]:
     lines.append("              id(home_screen_idle_suspended) = false;")
     lines.append("              id(home_screen_idle_check).execute();")
     lines.append("            };")
-    lines.append("            register_webhook_sender([](const std::string &url, const std::string &method, const std::string &body, const std::list<esphome::http_request::Header> &headers) {")
+    lines.append("            register_webhook_sender([](const std::string &url, const std::string &method, const std::string &body, const std::vector<esphome::http_request::Header> &headers) {")
     lines.append("              auto response = id(http_req).start(url, method, body, headers);")
     lines.append("              if (response == nullptr) {")
     lines.append("                ESP_LOGW(\"webhook\", \"Webhook request failed to start: %s\", url.c_str());")
