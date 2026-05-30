@@ -14,7 +14,7 @@ packages:
 
 esphome:
   project:
-    name: jtenniswood.espcontrol
+    name: jonnybergdahl.espcontrol
     version: "${firmware_version}"
 
 dashboard_import:

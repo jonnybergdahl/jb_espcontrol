@@ -25,6 +25,6 @@ wifi:
 # ---------------------------------------------------------------------------
 packages:
   setup:
-    url: https://github.com/jtenniswood/espcontrol/
+    url: https://github.com/jonnybergdahl/jb_espcontrol/
     file: devices/esp32-p4-86/packages.yaml
     refresh: 1s

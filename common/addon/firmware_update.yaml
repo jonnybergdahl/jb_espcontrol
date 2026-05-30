@@ -12,7 +12,7 @@ substitutions:
 
 esphome:
   project:
-    name: jtenniswood.espcontrol
+    name: jonnybergdahl.espcontrol
     version: "${firmware_version}"
   on_boot:
     - priority: 200
@@ -138,7 +138,7 @@ update:
     id: firmware_update
     name: "${entity_firmware_update}"
     internal: true
-    source: https://jtenniswood.github.io/espcontrol/firmware/${firmware_manifest_slug}/manifest.json
+    source: ${manifest_url}
     update_interval: never
     on_update_available:
       then:

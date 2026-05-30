@@ -7,6 +7,8 @@
 # =============================================================================
 
 substitutions:
+  js_url: https://jonnybergdahl.github.io/jb_espcontrol/webserver/${device_slug}/www.js?v=${firmware_version}&ui=20260529-large-clock-thin
+  manifest_url: https://jonnybergdahl.github.io/jb_espcontrol/firmware/${firmware_manifest_slug}/manifest.json
   device_slug: "wireless-tag-wt32-sc01-plus"
   firmware_manifest_slug: "wireless-tag-wt32-sc01-plus"
   screen_width: "480"

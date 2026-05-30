@@ -25,7 +25,7 @@ wifi:
 # ---------------------------------------------------------------------------
 packages:
   setup:
-    url: https://github.com/jtenniswood/espcontrol/
+    url: https://github.com/jonnybergdahl/jb_espcontrol/
     file: devices/guition-esp32-s3-4848s040/packages.yaml
     refresh: 1s
     vars:

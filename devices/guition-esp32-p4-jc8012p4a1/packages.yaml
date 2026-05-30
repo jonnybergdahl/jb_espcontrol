@@ -7,6 +7,8 @@
 # =============================================================================
 
 substitutions:
+  js_url: https://jonnybergdahl.github.io/jb_espcontrol/webserver/${device_slug}/www.js?v=${firmware_version}&ui=20260529-large-clock-thin
+  manifest_url: https://jonnybergdahl.github.io/jb_espcontrol/firmware/${firmware_manifest_slug}/manifest.json
   device_slug: "guition-esp32-p4-jc8012p4a1"
   firmware_manifest_slug: "guition-esp32-p4-jc8012p4a1"
   screen_width: "1280"

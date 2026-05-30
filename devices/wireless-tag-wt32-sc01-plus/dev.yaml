@@ -6,8 +6,7 @@
 substitutions:
   name: "wirelesstag-wt32-sc01-plus-dev"
   friendly_name: "Wireless-Tag WT32 SC01 Plus Dev"
-  espcontrol_component_url: "../.."
-  espcontrol_component_ref: "HEAD"
+  espcontrol_component_path: "/config/components"
 
 wifi:
   ssid: !secret wifi_ssid

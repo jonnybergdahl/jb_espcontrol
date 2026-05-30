@@ -1,5 +1,5 @@
 # =============================================================================
-# FACTORY BUILD - Guition ESP32-P4 JC1060P470 (7" landscape)
+# FACTORY BUILD - Wireless-Tag WT32-SC01 Plus (3.5" landscape)
 # =============================================================================
 # Factory image variant: bundles www.js inline (js_include) instead of loading
 # from GitHub CDN, so the web UI works on first boot before WiFi is configured.
@@ -13,7 +13,7 @@ substitutions:
   espcontrol_component_ref: "HEAD"
 
 packages:
-  core: !include guition-esp32-p4-jc1060p470.yaml
+  core: !include wireless-tag-wt32-sc01-plus.yaml
 
 esphome:
   project:
@@ -21,10 +21,10 @@ esphome:
     version: "${firmware_version}"
 
 dashboard_import:
-  package_import_url: github://jtenniswood/espcontrol/devices/guition-esp32-p4-jc1060p470/esphome.yaml@main
+  package_import_url: github://jonnybergdahl/jb_espcontrol/devices/wireless-tag-wt32-sc01-plus/esphome.yaml@main
 
 web_server:
   port: 80
   version: 3
   js_url: ""
-  js_include: "../docs/public/webserver/guition-esp32-p4-jc1060p470/www.js"
+  js_include: "../docs/public/webserver/wireless-tag-wt32-sc01-plus/www.js"

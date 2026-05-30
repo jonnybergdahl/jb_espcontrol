@@ -20,7 +20,7 @@ packages:
 esphome:
   name_add_mac_suffix: true
   project:
-    name: jtenniswood.espcontrol
+    name: jonnybergdahl.espcontrol
     version: "${firmware_version}"
 
 dashboard_import:
