@@ -90,6 +90,24 @@
       "relays": 3,
       "rotation": true,
       "ethernetManualInstall": false
+    },
+    {
+      "slug": "wireless-tag-wt32-sc01-plus",
+      "installSlug": "wireless-tag-wt32-sc01-plus",
+      "name": "WT32-SC01 Plus",
+      "docsPath": "/screens/sc01-plus",
+      "screenSize": "3.5 inches",
+      "resolution": "480 x 320",
+      "orientation": "Landscape",
+      "slots": 6,
+      "grid": {
+        "rows": 2,
+        "cols": 3
+      },
+      "chipFamily": "ESP32-S3",
+      "relays": 0,
+      "rotation": true,
+      "ethernetManualInstall": false
     }
   ]
 }
