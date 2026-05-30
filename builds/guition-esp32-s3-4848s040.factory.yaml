@@ -12,10 +12,7 @@ substitutions:
   espcontrol_component_ref: "HEAD"
 
 packages:
-  core: !include
-    file: ../devices/guition-esp32-s3-4848s040/packages.yaml
-    vars:
-      provisioning_package_suffix: ""
+  core: !include ../devices/guition-esp32-s3-4848s040/packages.yaml
 
 esphome:
   name_add_mac_suffix: true
@@ -31,3 +28,9 @@ web_server:
   version: 3
   js_url: ""
   js_include: "../docs/public/webserver/guition-esp32-s3-4848s040/www.js"
+
+wifi:
+  ap:
+    ssid: "${friendly_name}"
+
+captive_portal:

@@ -2,7 +2,7 @@
 # ICONS - Material Design Icons for buttons and setup screens
 # =============================================================================
 # http://materialdesignicons.com/cdn/7.4.47/
-# Two icon fonts: button icons and setup icons.
+# Button and setup screens share the same icon font.
 # =============================================================================
 
 font:
@@ -12,20 +12,6 @@ font:
     size: 48
     bpp: 4
     glyphs: !include icon_glyphs.yaml
-
-  # Setup screen icons (64px)
-  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
-    id: font_mdi_64_setup_icons
-    size: 64
-    bpp: 4
-    glyphs:
-      - "\U000F05A9"  # mdi-wifi
-      - "\U000F0928"  # mdi-wifi-strength-4
-      - "\U000F0200"  # mdi-ethernet
-      - "\U000F0493"  # mdi-cog
-      - "\U000F07D0"  # mdi-home-assistant
-      - "\U000F0996"  # mdi-progress-clock
-      - "\U000F012C"  # mdi-check
 
 substitutions:
   icon_wifi_startup: "\U000F05A9"

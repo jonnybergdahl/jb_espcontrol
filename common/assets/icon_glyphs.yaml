@@ -6,6 +6,10 @@
 - "\U000F01DA"  # mdi-download (Firmware install update entity)
 - "\U000F04F9"  # mdi-tag (Firmware version entity)
 - "\U000F06B0"  # mdi-update (Firmware update entities)
+- "\U000F05A9"  # mdi-wifi (Setup screens)
+- "\U000F0928"  # mdi-wifi-strength-4 (Setup screens)
+- "\U000F0200"  # mdi-ethernet (Setup screens)
+- "\U000F07D0"  # mdi-home-assistant (Setup screens)
 - "\U000F0004"  # mdi-account
 - "\U000F001B"  # mdi-air-conditioner
 - "\U000F0D43"  # mdi-air-filter

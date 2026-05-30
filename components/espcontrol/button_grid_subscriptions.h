@@ -187,10 +187,12 @@ inline void subscribe_presence_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
 }
 
 inline void subscribe_weather_state(lv_obj_t *icon_lbl, lv_obj_t *text_lbl, const std::string &entity_id) {
+  ESP_LOGI("weather", "Subscribing to current weather state for %s", entity_id.c_str());
   ha_subscribe_state(
     entity_id,
-    std::function<void(esphome::StringRef)>([icon_lbl, text_lbl](esphome::StringRef state) {
+    std::function<void(esphome::StringRef)>([icon_lbl, text_lbl, entity_id](esphome::StringRef state) {
       std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
+      ESP_LOGI("weather", "Current weather state for %s: %s", entity_id.c_str(), state_text.c_str());
       lv_label_set_text(icon_lbl, weather_icon_for_state(state_text));
       lv_label_set_text(text_lbl, weather_label_for_state(state_text).c_str());
     })

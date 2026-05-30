@@ -18,7 +18,7 @@ Use Action cards for shortcuts such as running a scene, starting a script, trigg
 4. Enter the **Entity** for the thing you want the action to use.
 5. If you choose **Set Number Helper**, enter the value.
 6. Choose an **Icon**.
-7. Optionally turn on **Show State** if the Action card should light up based on another Home Assistant entity.
+7. Optionally turn on **Show State** if the Action card should show a separate Home Assistant state.
 
 ## Run an Existing Home Assistant Script
 
@@ -65,7 +65,13 @@ Action cards are normally stateless: they flash when tapped, then return to thei
 
 Turn on **Show State** when an action should behave like a shortcut but still show whether something is active. For example, an Action card might run a scene called `scene.movie_mode`, while **State Entity** watches `input_boolean.movie_mode`.
 
-When the state entity is active, the Action card stays highlighted. If the state entity is unavailable, the card is disabled until Home Assistant reports it as available again. The action target itself stays tappable because many Home Assistant command-only entities, including `button.*` entities, do not report a useful on/off state.
+Show State has three display modes:
+
+- **Icon** — keeps the normal action icon, and can show a separate **On Icon** while the state entity is active.
+- **Numeric** — shows a live sensor value, with optional **Unit**, **Unit Precision**, and **Large State Numbers** on larger cards.
+- **Text** — shows the live state text where the card label normally appears.
+
+When the state entity is active, Icon mode highlights the card. If the state entity is unavailable, the card is disabled until Home Assistant reports it as available again. The action target itself stays tappable because many Home Assistant command-only entities, including `button.*` entities, do not report a useful on/off state.
 
 ## How It Works on the Panel
 
@@ -74,7 +80,7 @@ When you tap an Action card:
 - The card briefly flashes the highlight colour.
 - The selected Home Assistant action is sent with the configured entity.
 - If **Show State** is off, the card does not stay highlighted.
-- If **Show State** is on, the card highlight follows the state entity you chose.
+- If **Show State** is on, the card display follows the state entity you chose.
 
 ## When to Use a Scene or Script
 

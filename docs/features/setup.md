@@ -35,8 +35,9 @@ The **Type** dropdown uses these card names on the device:
 | **[Action](/card-types/actions)** | Runs a one-tap Home Assistant scene, script, button, helper action, or Option Select picker. | Yes |
 | **[Webhook](/card-types/webhooks)** | Calls an HTTP URL directly from the panel for other automation platforms and webhook services. | URL |
 | **[Trigger](/card-types/buttons)** | Fires an event to Home Assistant for use in automations. | No |
-| **[Sensor](/card-types/sensors)** | Shows a live numeric reading or text state. | Yes, as **Sensor Entity** |
+| **[Sensor](/card-types/sensors)** | Shows a live numeric reading, text state, or icon state. | Yes, as **Sensor Entity** |
 | **[Doors & Windows](/card-types/doors-windows)** | Shows a door or window contact sensor with open and closed icons. | Yes, as **Sensor Entity** |
+| **[Presence](/card-types/presence)** | Shows whether a person, room, or motion sensor is active. | Yes, as **Sensor Entity** |
 | **[Slider](/card-types/sliders)** | Controls light brightness or fan speed with a draggable fill bar. | Yes |
 | **[Cover](/card-types/covers)** | Controls blinds, shutters, and similar cover entities with a slider or tap action. | Yes |
 | **[Garage Door](/card-types/garage-doors)** | Controls a garage door cover entity with an open/close tap action. | Yes |
@@ -50,7 +51,7 @@ The **Type** dropdown uses these card names on the device:
 
 For cards that use Home Assistant, enter the entity name from Home Assistant in the **Entity** field, such as `light.living_room`, `switch.garden_lights`, `scene.movie_mode`, or `weather.forecast_home`. Some card types use a more specific label, such as **Sensor Entity**, **Weather Entity**, or **Climate Entity**. You can find entity names under **Settings > Devices & Services** in Home Assistant.
 
-Some card names group several related controls together. **Lights** contains Switch, Brightness, and Colour Temperature options. **Action** contains scene, script, helper, and Option Select actions. **Date & Time** contains Clock, Date, Time & Date, and World Clock options.
+Some card names group several related controls together. **Lights** contains Switch, Brightness, and Colour Temperature options. **Action** contains scene, script, helper, vacuum, and Option Select actions. **Date & Time** contains Clock, Date, Time & Date, and World Clock options.
 
 For the generated list of current card domains, subpage support, grouping, and options, see the [Card Capability Reference](/generated/cards/capabilities).
 

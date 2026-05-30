@@ -114,14 +114,7 @@ script:
           hidden: true
       - lambda: |-
           network_status_hide_modal();
-          std::string mac = get_mac_address();
-          std::string compact;
-          for (char c : mac) {
-            if (c != ':' && c != '-') compact.push_back(c);
-          }
-          std::string suffix = compact.length() > 6 ? compact.substr(compact.length() - 6) : compact;
-          if (suffix.empty()) suffix = "SETUP";
-          std::string msg = "Connect to hotspot\nESP_" + suffix + "\nOpen 192.168.4.1";
+          std::string msg = "Connect to WiFi\n${friendly_name}\nOpen 192.168.4.1";
           lv_label_set_text(id(wifi_setup_title), "WiFi Setup");
           lv_label_set_text(id(wifi_setup_instructions), msg.c_str());
       - lvgl.page.show: wifi_setup_page

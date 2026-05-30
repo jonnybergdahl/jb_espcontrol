@@ -40,6 +40,30 @@
       "codepoint": "F06B0",
       "mdi": "update",
       "comment": "Firmware update entities"
+    },
+    {
+      "name": "Wi-Fi Startup",
+      "codepoint": "F05A9",
+      "mdi": "wifi",
+      "comment": "Setup screens"
+    },
+    {
+      "name": "Wi-Fi",
+      "codepoint": "F0928",
+      "mdi": "wifi-strength-4",
+      "comment": "Setup screens"
+    },
+    {
+      "name": "Ethernet",
+      "codepoint": "F0200",
+      "mdi": "ethernet",
+      "comment": "Setup screens"
+    },
+    {
+      "name": "Home Assistant",
+      "codepoint": "F07D0",
+      "mdi": "home-assistant",
+      "comment": "Setup screens"
     }
   ],
   "icons": [

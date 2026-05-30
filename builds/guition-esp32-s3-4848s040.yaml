@@ -14,13 +14,14 @@ esphome:
   name_add_mac_suffix: true
 
 packages:
-  espcontrol: !include
-    file: ../devices/guition-esp32-s3-4848s040/packages.yaml
-    vars:
-      provisioning_package_suffix: "_deployed"
+  espcontrol: !include ../devices/guition-esp32-s3-4848s040/packages.yaml
 
 wifi:
   # Compile-only station credentials for CI/local builds. User-imported
   # deployed configs supply their real WiFi credentials in device YAML.
   ssid: "ESPControl"
   password: "espcontrol"
+  ap:
+    ssid: "${friendly_name}"
+
+captive_portal:

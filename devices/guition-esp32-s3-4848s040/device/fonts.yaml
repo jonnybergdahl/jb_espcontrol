@@ -73,17 +73,3 @@ font:
     size: 23
     bpp: 4
     glyphs: !include ../../../common/assets/network_status_glyphs.yaml
-
-  # Setup screen icons (61px, proportional to 92px on the 720x720 square panel)
-  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
-    id: font_mdi_61_setup_icons
-    size: 61
-    bpp: 4
-    glyphs:
-      - "\U000F05A9"  # mdi-wifi
-      - "\U000F0928"  # mdi-wifi-strength-4
-      - "\U000F0200"  # mdi-ethernet
-      - "\U000F0493"  # mdi-cog
-      - "\U000F07D0"  # mdi-home-assistant
-      - "\U000F0996"  # mdi-progress-clock
-      - "\U000F012C"  # mdi-check

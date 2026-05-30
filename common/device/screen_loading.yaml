@@ -79,6 +79,17 @@ esphome:
         - delay: 100ms
         - if:
             condition:
+              and:
+                - not:
+                    wifi.connected:
+                - lambda: 'return !wifi::global_wifi_component->has_sta();'
+            then:
+              - lambda: |-
+                  lv_label_set_text(id(loading_status_icon), "${icon_wifi}");
+                  lv_label_set_text(id(loading_status_title), "WiFi Setup");
+                  lv_label_set_text(id(loading_status_label), "Connect to WiFi\n${friendly_name}\nOpen 192.168.4.1");
+        - if:
+            condition:
               lambda: |-
                 return id(screen_schedule_asleep) ||
                        (id(schedule_enabled).state && !panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now()).is_valid());
@@ -97,21 +108,22 @@ esphome:
             then:
               - lambda: |-
                   lv_label_set_text(id(loading_status_label), "Connecting to WiFi");
-              - delay: 60s
+              - delay: 5s
               - lambda: 'id(boot_grace_period) = false;'
               - if:
                   condition:
-                    not:
-                      wifi.connected:
+                    and:
+                      - wifi.connected:
+                      - lambda: 'return lv_scr_act() == id(loading_page)->obj;'
                   then:
-                    - script.execute: wifi_show_reconnecting
-                    - delay: 30s
+                    - script.execute: navigate_after_api
+                  else:
                     - if:
                         condition:
                           not:
                             wifi.connected:
                         then:
-                          - script.execute: wifi_show_hotspot_setup
+                          - script.execute: wifi_reconnect_flow
             else:
               - lambda: 'id(boot_grace_period) = false;'
               - script.execute: wifi_show_hotspot_setup

@@ -20,6 +20,7 @@ You will find it in the **Settings** tab on the [Setup](/features/setup) page, u
 - **When Woken, Screen Brightness** - shown only for **Screen Off**. It controls the brightness used for a temporary wake during scheduled-off hours. The default is **10%**.
 - **Dimmed Screen Brightness** - shown only for **Screen Dimmed**. It controls the overnight brightness while the panel stays usable. The default is **10%**.
 - **Clock Brightness** - shown only for **Clock**. It controls the backlight level used by the overnight clock. The default is **10%**.
+- **Clock Text Color** - shown only for **Clock**. It controls the colour of the overnight schedule clock text.
 
 When the schedule is disabled, the on and off time controls are hidden and the panel uses the normal [screensaver](/features/screensaver) and [backlight](/features/backlight) rules.
 
@@ -39,6 +40,6 @@ Pressing and holding a button on the touchscreen for 3 seconds puts the screen t
 
 ## Brightness
 
-Screen schedule works alongside the daytime and nighttime brightness settings. When the screen is awake during scheduled-on hours, brightness still follows sunrise and sunset for your selected timezone. **Screen Dimmed** uses its own overnight brightness setting. **Screen Off** turns the physical backlight off, while **Clock** uses its own clock brightness setting.
+Screen schedule works alongside the daytime and nighttime brightness settings. When the screen is awake during scheduled-on hours, brightness still follows sunrise and sunset for your selected timezone. **Screen Dimmed** uses its own overnight brightness setting. **Screen Off** turns the physical backlight off, while **Clock** uses its own clock brightness and text colour settings.
 
 If Home Assistant needs temporary control of the display brightness, turn off **Screen: Automatic Brightness** before setting `Display Backlight`. This pauses the day/night brightness adjustment without disabling the Night Schedule itself.

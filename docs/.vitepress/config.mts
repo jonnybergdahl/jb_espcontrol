@@ -150,7 +150,7 @@ const faqItems = [
   {
     question: 'What Card Types Are Available?',
     answer:
-      'The setup page includes Switch, Lights, Action, Trigger, Sensor, Doors & Windows, Slider, Cover, Garage Door, Lock, Date & Time, World Clock, Weather, Media, Climate, Internal Switches, and Subpage cards.',
+      'The setup page includes Switch, Lights, Action, Webhook, Trigger, Sensor, Doors & Windows, Presence, Slider, Cover, Garage Door, Lock, Date & Time, World Clock, Weather, Media, Climate, Internal Switches, and Subpage cards.',
   },
   {
     question: 'How Many Cards Can I Have?',
@@ -413,9 +413,11 @@ export default defineConfig({
           { text: 'Switch', link: '/card-types/switches' },
           { text: 'Lights', link: '/card-types/lights' },
           { text: 'Action', link: '/card-types/actions' },
+          { text: 'Webhook', link: '/card-types/webhooks' },
           { text: 'Trigger', link: '/card-types/buttons' },
           { text: 'Sensor', link: '/card-types/sensors' },
           { text: 'Doors & Windows', link: '/card-types/doors-windows' },
+          { text: 'Presence', link: '/card-types/presence' },
           { text: 'Slider', link: '/card-types/sliders' },
           { text: 'Cover', link: '/card-types/covers' },
           { text: 'Garage Door', link: '/card-types/garage-doors' },

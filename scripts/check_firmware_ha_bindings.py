@@ -230,6 +230,8 @@ def firmware_weather_request_errors(firmware_dir: Path, root: Path) -> list[str]
         errors.append(f"{rel}: bound pending forecast response callbacks")
     if "weather_forecast_cancel_pending_requests" not in text:
         errors.append(f"{rel}: expose a helper to cancel pending forecast callbacks")
+    if "WEATHER_FORECAST_RETRY_DELAY_MS" not in text or "weather_forecast_schedule_retry" not in text:
+        errors.append(f"{rel}: retry failed weather forecast requests later")
     return errors
 
 
@@ -1053,8 +1055,10 @@ def run_self_test() -> int:
         "weather request during reconnect",
         "inline void request_weather_forecast_entity() {\n"
         "  constexpr int WEATHER_FORECAST_PENDING_MAX = 8;\n"
+        "  constexpr uint32_t WEATHER_FORECAST_RETRY_DELAY_MS = 300000;\n"
         "  weather_forecast_track_pending(req.call_id);\n"
         "  weather_forecast_cancel_pending_requests();\n"
+        "  weather_forecast_schedule_retry(entity_id, day, \"failed\");\n"
         "  if (!ha_api_available()) return;\n"
         "  ha_register_action_response_callback(req.call_id, cb);\n"
         "  ha_action_send(req);\n"
@@ -1065,8 +1069,10 @@ def run_self_test() -> int:
         "weather callback leak on send failure",
         "inline void request_weather_forecast_entity() {\n"
         "  constexpr int WEATHER_FORECAST_PENDING_MAX = 8;\n"
+        "  constexpr uint32_t WEATHER_FORECAST_RETRY_DELAY_MS = 300000;\n"
         "  weather_forecast_track_pending(req.call_id);\n"
         "  weather_forecast_cancel_pending_requests();\n"
+        "  weather_forecast_schedule_retry(entity_id, day, \"failed\");\n"
         "  if (!ha_api_state_connected()) return;\n"
         "  ha_register_action_response_callback(req.call_id, cb);\n"
         "  if (!ha_action_send(req)) return;\n"
@@ -1076,11 +1082,26 @@ def run_self_test() -> int:
     expect_weather_request_errors(
         "unbounded weather callbacks",
         "inline void request_weather_forecast_entity() {\n"
+        "  constexpr uint32_t WEATHER_FORECAST_RETRY_DELAY_MS = 300000;\n"
+        "  weather_forecast_schedule_retry(entity_id, day, \"failed\");\n"
         "  if (!ha_api_state_connected()) return;\n"
         "  ha_register_action_response_callback(req.call_id, cb);\n"
         "  ha_cancel_action_response_callback(req.call_id, \"send failed\");\n"
         "}\n",
         ("bound pending forecast response callbacks",),
+    )
+    expect_weather_request_errors(
+        "missing delayed weather request retry",
+        "inline void request_weather_forecast_entity() {\n"
+        "  constexpr int WEATHER_FORECAST_PENDING_MAX = 8;\n"
+        "  weather_forecast_track_pending(req.call_id);\n"
+        "  weather_forecast_cancel_pending_requests();\n"
+        "  if (!ha_api_state_connected()) return;\n"
+        "  ha_register_action_response_callback(req.call_id, cb);\n"
+        "  ha_cancel_action_response_callback(req.call_id, \"send failed\");\n"
+        "  ha_action_send(req);\n"
+        "}\n",
+        ("retry failed weather forecast requests later",),
     )
     expect_weather_disconnect_errors(
         "missing weather disconnect cleanup",

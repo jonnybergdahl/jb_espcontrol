@@ -60,23 +60,3 @@ font:
     extras:
       - file: "gfonts://Heebo"
         glyphs: !include hebrew_glyphs.yaml
-
-  # Setup screens: titles (40px light)
-  - file: "gfonts://Roboto@Light"
-    id: font_roboto_light_40_setup_text
-    size: 40
-    bpp: 4
-    glyphs: !include setup_text_glyphs.yaml
-    extras:
-      - file: "gfonts://Heebo@Light"
-        glyphs: !include hebrew_glyphs.yaml
-
-  # Setup screens: body text (24px)
-  - file: "gfonts://Roboto"
-    id: font_roboto_regular_24_setup_text
-    size: 24
-    bpp: 4
-    glyphs: !include setup_text_glyphs.yaml
-    extras:
-      - file: "gfonts://Heebo"
-        glyphs: !include hebrew_glyphs.yaml

@@ -14,9 +14,9 @@ substitutions:
   screen_width: "1280"
   screen_height: "800"
   content_width: "760"
-  setup_icon_font_id: font_mdi_102_setup_icons
-  setup_title_font_id: font_roboto_light_40_setup_text
-  setup_body_font_id: font_roboto_regular_24_setup_text
+  setup_icon_font_id: font_mdi_56_icons
+  setup_title_font_id: font_roboto_light_46_text
+  setup_body_font_id: font_roboto_regular_24_text
   setup_pad_row: "20"
   setup_loading_pad_row: "40"
   setup_action_button_width: "200"

@@ -102,37 +102,3 @@ font:
     size: 26
     bpp: 4
     glyphs: !include ../../../common/assets/network_status_glyphs.yaml
-
-  # Setup screen icons (92px)
-  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
-    id: font_mdi_92_setup_icons
-    size: 92
-    bpp: 4
-    glyphs:
-      - "\U000F05A9"  # mdi-wifi
-      - "\U000F0928"  # mdi-wifi-strength-4
-      - "\U000F0200"  # mdi-ethernet
-      - "\U000F0493"  # mdi-cog
-      - "\U000F07D0"  # mdi-home-assistant
-      - "\U000F0996"  # mdi-progress-clock
-      - "\U000F012C"  # mdi-check
-
-  # Setup screen titles (56px)
-  - file: "gfonts://Roboto@Light"
-    id: font_roboto_light_56_setup_text
-    size: 56
-    bpp: 4
-    glyphs: !include ../../../common/assets/setup_text_glyphs.yaml
-    extras:
-      - file: "gfonts://Heebo@Light"
-        glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
-
-  # Setup screen body text (34px)
-  - file: "gfonts://Roboto"
-    id: font_roboto_regular_34_setup_text
-    size: 34
-    bpp: 4
-    glyphs: !include ../../../common/assets/setup_text_glyphs.yaml
-    extras:
-      - file: "gfonts://Heebo"
-        glyphs: !include ../../../common/assets/hebrew_glyphs.yaml

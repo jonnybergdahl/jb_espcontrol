@@ -10,19 +10,20 @@ description:
 
 A Subpage card works like a folder. Tapping it on the panel opens a new page with its own set of cards. This is useful for grouping related controls together, such as all the lights in one room, without filling up the home screen.
 
-A subpage has one fewer usable slot than the home screen because it includes a **Back** card. Subpage cards on the home screen show a small arrow badge so you can spot them easily.
+A subpage has one fewer usable slot than the home screen because it includes a **Back** card. Subpage cards on the home screen can show a small chevron marker so you can spot them easily. You can turn this marker on or off with **Screen: Subpage Chevron** in the Clock Bar settings.
 
 ## Setting Up a Subpage
 
 1. Select a card on the home screen and change its type to **Subpage**.
-2. Set a **Label** and **Icon** if you want them.
-3. Click **Edit Subpage** in the card settings, or right-click the card and choose **Edit Subpage**.
-4. The preview switches to the subpage. Add and arrange cards here the same way you would on the home screen.
-5. Click the **Back** card to return to the home screen.
+2. Choose a subpage **Type**. **Generic** is a normal folder, while **Lights**, **Climate**, **Presence**, and **Media** use useful defaults for those common room pages.
+3. Set a **Label** and **Icon** if you want them.
+4. Click **Edit Subpage** in the card settings, or right-click the card and choose **Edit Subpage**.
+5. The preview switches to the subpage. Add and arrange cards here the same way you would on the home screen.
+6. Click the **Back** card to return to the home screen.
 
 You can also right-click an empty space on the home screen and choose **Create Subpage**.
 
-Subpages can contain Switch, Lights, Action, Trigger, Sensor, Doors & Windows, Slider, Cover, Garage Door, Lock, Date & Time, Clock, World Clock, Weather, Media, Climate, and Internal Switches cards. Subpages cannot contain another Subpage card.
+Subpages can contain Switch, Lights, Action, Trigger, Sensor, Doors & Windows, Presence, Slider, Cover, Garage Door, Lock, Date & Time, Clock, World Clock, Weather, Media, Climate, and Internal Switches cards. Subpages cannot contain another Subpage card.
 
 ## Open a Page From Home Assistant
 
