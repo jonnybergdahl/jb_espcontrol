@@ -79,8 +79,10 @@ esphome:
         - delay: 100ms
         - if:
             condition:
-              not:
-                wifi.connected:
+              and:
+                - not:
+                    wifi.connected:
+                - lambda: 'return !wifi::global_wifi_component->has_sta();'
             then:
               - lambda: |-
                   lv_label_set_text(id(loading_status_icon), "${icon_wifi}");
@@ -121,7 +123,7 @@ esphome:
                           not:
                             wifi.connected:
                         then:
-                          - script.execute: wifi_show_hotspot_setup
+                          - script.execute: wifi_show_reconnecting
             else:
               - lambda: 'id(boot_grace_period) = false;'
               - script.execute: wifi_show_hotspot_setup
