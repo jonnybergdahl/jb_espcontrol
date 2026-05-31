@@ -49,7 +49,7 @@ jobs:
       max-parallel: 1
       matrix: ${{ fromJSON(needs.device-matrix.outputs.matrix) }}
     steps:
-      - name: Prepare self-hosted workspace
+      - name: Prepare workspace
         run: |
           rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?* 2>/dev/null ||
             sudo rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?*
