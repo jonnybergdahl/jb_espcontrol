@@ -24,7 +24,7 @@ env:
 jobs:
   preflight:
     name: Product Preflight
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Prepare self-hosted workspace
         run: |
@@ -51,7 +51,7 @@ jobs:
   device-matrix:
     name: Prepare Device Matrix
     needs: preflight
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
@@ -71,7 +71,7 @@ jobs:
   build-firmware:
     name: Build ${{ matrix.slug }}
     needs: device-matrix
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       max-parallel: 6
@@ -191,7 +191,7 @@ jobs:
     name: Publish to Release
     if: github.event_name == 'release' || inputs.release_tag != ''
     needs: build-firmware
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Download all firmware artifacts
         uses: actions/download-artifact@v8

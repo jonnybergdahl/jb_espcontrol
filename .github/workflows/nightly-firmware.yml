@@ -43,7 +43,7 @@ jobs:
   compile:
     name: Compile Firmware (${{ matrix.slug }})
     needs: device-matrix
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       max-parallel: 1
