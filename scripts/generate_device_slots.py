@@ -34,6 +34,8 @@ def package_data(device: dict) -> dict:
 def package_substitution_lines(device: dict) -> list[str]:
     package = package_data(device)
     lines = [
+        '  js_url: https://jonnybergdahl.github.io/jb_espcontrol/webserver/${device_slug}/www.js?v=${firmware_version}&ui=20260529-large-clock-thin',
+        '  manifest_url: https://jonnybergdahl.github.io/jb_espcontrol/firmware/${firmware_manifest_slug}/manifest.json',
         f'  device_slug: "{device["slug"]}"',
         f'  firmware_manifest_slug: "{device["slug"]}"',
     ]

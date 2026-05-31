@@ -15,8 +15,8 @@ substitutions:
   screen_height: "320"
   content_width: "380"
   setup_icon_font_id: icon_font_setup_sm
-  setup_title_font_id: font_roboto_light_40_setup_text
-  setup_body_font_id: font_roboto_regular_24_setup_text
+  setup_title_font_id: setup_title_font
+  setup_body_font_id: setup_body_font
   setup_pad_row: "20"
   setup_loading_pad_row: "40"
   setup_action_button_width: "200"
