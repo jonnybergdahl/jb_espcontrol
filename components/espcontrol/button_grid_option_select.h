@@ -310,6 +310,7 @@ inline OptionSelectCtx *create_option_select_context(
 
 inline void subscribe_option_select_state(OptionSelectCtx *ctx) {
   if (!ctx || ctx->entity_id.empty()) return;
+  register_ha_control_availability(ctx->btn, ctx->btn);
   ha_subscribe_state(
     ctx->entity_id,
     std::function<void(esphome::StringRef)>([ctx](esphome::StringRef state) {

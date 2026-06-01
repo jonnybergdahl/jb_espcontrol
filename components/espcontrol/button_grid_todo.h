@@ -647,6 +647,7 @@ inline TodoCardCtx *create_todo_card_context(
 
 inline void subscribe_todo_state(TodoCardCtx *ctx) {
   if (!todo_card_context_valid(ctx) || ctx->entity_id.empty()) return;
+  register_ha_control_availability(ctx->btn, ctx->btn, false);
   ha_subscribe_state(
     ctx->entity_id,
     std::function<void(esphome::StringRef)>([ctx](esphome::StringRef state) {
@@ -1367,6 +1368,7 @@ inline TodoCardCtx *create_todo_card_context(
 
 inline void subscribe_todo_state(TodoCardCtx *ctx) {
   if (!todo_card_context_valid(ctx) || ctx->entity_id.empty()) return;
+  register_ha_control_availability(ctx->btn, ctx->btn, false);
   ha_subscribe_state(
     ctx->entity_id,
     std::function<void(esphome::StringRef)>([ctx](esphome::StringRef state) {

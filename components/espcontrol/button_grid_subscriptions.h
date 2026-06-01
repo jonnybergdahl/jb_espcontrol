@@ -41,6 +41,7 @@ inline void subscribe_sensor_value(lv_obj_t *sensor_lbl, const std::string &sens
                                    bool active_color = false,
                                    uint32_t on_color = DEFAULT_SLIDER_COLOR,
                                    uint32_t sensor_color = DEFAULT_TERTIARY_COLOR) {
+  if (availability_obj) register_ha_control_availability(availability_obj, availability_obj, false);
   std::string display_unit = trim_display_unit(unit);
   ha_subscribe_state(
     sensor_id,
@@ -84,6 +85,7 @@ inline void subscribe_text_sensor_value(lv_obj_t *text_lbl, const std::string &s
                                         bool active_color = false,
                                         uint32_t on_color = DEFAULT_SLIDER_COLOR,
                                         uint32_t sensor_color = DEFAULT_TERTIARY_COLOR) {
+  if (availability_obj) register_ha_control_availability(availability_obj, availability_obj, false);
   ha_subscribe_state(
     sensor_id,
     std::function<void(esphome::StringRef)>(
@@ -102,6 +104,7 @@ inline void subscribe_text_sensor_value(lv_obj_t *text_lbl, const std::string &s
 inline void subscribe_sensor_icon_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
                                         const ParsedCfg &p) {
   if (p.sensor.empty()) return;
+  register_ha_control_availability(btn_ptr, btn_ptr, false);
   const char *icon_off = (p.icon.empty() || p.icon == "Auto")
     ? find_icon("Auto") : find_icon(p.icon.c_str());
   bool has_icon_on = !p.icon_on.empty() && p.icon_on != "Auto";
@@ -127,6 +130,7 @@ inline void subscribe_sensor_text_card_value(lv_obj_t *text_lbl, const ParsedCfg
                                              uint32_t on_color = DEFAULT_SLIDER_COLOR,
                                              uint32_t sensor_color = DEFAULT_TERTIARY_COLOR) {
   if (p.sensor.empty()) return;
+  if (availability_obj) register_ha_control_availability(availability_obj, availability_obj, false);
   ha_subscribe_state(
     p.sensor,
     std::function<void(esphome::StringRef)>(
@@ -148,6 +152,7 @@ inline void subscribe_door_window_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
                                         bool active_color,
                                         uint32_t on_color,
                                         uint32_t sensor_color) {
+  register_ha_control_availability(btn_ptr, btn_ptr, false);
   ha_subscribe_state(
     sensor_id,
     std::function<void(esphome::StringRef)>(
@@ -170,6 +175,7 @@ inline void subscribe_presence_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
                                      bool active_color,
                                      uint32_t on_color,
                                      uint32_t sensor_color) {
+  register_ha_control_availability(btn_ptr, btn_ptr, false);
   ha_subscribe_state(
     sensor_id,
     std::function<void(esphome::StringRef)>(
@@ -188,6 +194,8 @@ inline void subscribe_presence_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
 
 inline void subscribe_weather_state(lv_obj_t *icon_lbl, lv_obj_t *text_lbl, const std::string &entity_id) {
   ESP_LOGI("weather", "Subscribing to current weather state for %s", entity_id.c_str());
+  lv_obj_t *btn_ptr = icon_lbl ? lv_obj_get_parent(icon_lbl) : nullptr;
+  register_ha_control_availability(btn_ptr, btn_ptr, false);
   ha_subscribe_state(
     entity_id,
     std::function<void(esphome::StringRef)>([icon_lbl, text_lbl, entity_id](esphome::StringRef state) {
@@ -204,6 +212,7 @@ inline void subscribe_garage_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
                                    const char *closed_icon, const char *open_icon,
                                    const std::string &entity_id,
                                    bool persistent_status = false) {
+  register_ha_control_availability(btn_ptr, btn_ptr);
   ha_subscribe_state(
     entity_id,
     std::function<void(esphome::StringRef)>(
@@ -226,6 +235,7 @@ inline void subscribe_cover_toggle_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
                                          TransientStatusLabel *status_label,
                                          const char *closed_icon, const char *open_icon,
                                          const std::string &entity_id) {
+  register_ha_control_availability(btn_ptr, btn_ptr);
   ha_subscribe_state(
     entity_id,
     std::function<void(esphome::StringRef)>(
@@ -248,6 +258,7 @@ inline void subscribe_lock_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
                                  const char *locked_icon, const char *unlocked_icon,
                                  LockCardCtx *ctx) {
   if (!ctx) return;
+  register_ha_control_availability(btn_ptr, btn_ptr);
   ha_subscribe_state(
     ctx->entity_id,
     std::function<void(esphome::StringRef)>(
@@ -308,6 +319,7 @@ inline void subscribe_toggle_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
                                    ToggleTextSensorCtx *text_sensor_ctx,
                                    const std::string &entity_id,
                                    bool disable_interaction = true) {
+  register_ha_control_availability(btn_ptr, btn_ptr, disable_interaction);
   ha_subscribe_state(
     entity_id,
     std::function<void(esphome::StringRef)>(
@@ -348,6 +360,7 @@ inline void subscribe_control_availability(lv_obj_t *visual_obj, lv_obj_t *input
                                            const std::string &entity_id,
                                            bool disable_interaction = true) {
   if (entity_id.empty()) return;
+  register_ha_control_availability(visual_obj, input_obj, disable_interaction);
   ha_subscribe_state(
     entity_id,
     std::function<void(esphome::StringRef)>(
@@ -432,6 +445,7 @@ inline void apply_action_card_display_value(ActionCardStateCtx *ctx,
 inline void subscribe_action_card_display_state(ActionCardStateCtx *ctx,
                                                 const std::string &entity_id) {
   if (!ctx || entity_id.empty()) return;
+  register_ha_control_availability(ctx->btn, ctx->btn);
   ctx->has_state_entity = true;
   ha_subscribe_state(
     entity_id,

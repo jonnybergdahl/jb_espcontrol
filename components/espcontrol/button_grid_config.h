@@ -970,6 +970,34 @@ inline bool ha_entity_state_unavailable_ref(const std::string &entity_id,
   return false;
 }
 
+struct HaControlAvailabilityRef {
+  lv_obj_t *visual_obj;
+  lv_obj_t *input_obj;
+  bool disable_interaction;
+};
+
+inline std::vector<HaControlAvailabilityRef> &ha_control_availability_refs() {
+  static std::vector<HaControlAvailabilityRef> refs;
+  return refs;
+}
+
+inline void reset_ha_control_availability_refs() {
+  ha_control_availability_refs().clear();
+}
+
+inline void register_ha_control_availability(lv_obj_t *visual_obj, lv_obj_t *input_obj,
+                                             bool disable_interaction = true) {
+  if (!visual_obj && !input_obj) return;
+  std::vector<HaControlAvailabilityRef> &refs = ha_control_availability_refs();
+  for (const auto &ref : refs) {
+    if (ref.visual_obj == visual_obj && ref.input_obj == input_obj &&
+        ref.disable_interaction == disable_interaction) {
+      return;
+    }
+  }
+  refs.push_back({visual_obj, input_obj, disable_interaction});
+}
+
 inline void apply_control_availability(lv_obj_t *visual_obj, lv_obj_t *input_obj,
                                        bool available, bool disable_interaction = true) {
   if (visual_obj) {
@@ -986,6 +1014,12 @@ inline void apply_control_availability(lv_obj_t *visual_obj, lv_obj_t *input_obj
   }
   if (available) lv_obj_add_flag(input_obj, LV_OBJ_FLAG_CLICKABLE);
   else lv_obj_clear_flag(input_obj, LV_OBJ_FLAG_CLICKABLE);
+}
+
+inline void apply_registered_ha_control_availability(bool available) {
+  for (const auto &ref : ha_control_availability_refs()) {
+    apply_control_availability(ref.visual_obj, ref.input_obj, available, ref.disable_interaction);
+  }
 }
 
 inline std::string sentence_cap_text(const std::string &state) {

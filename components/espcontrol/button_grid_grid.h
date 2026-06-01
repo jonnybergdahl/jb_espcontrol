@@ -697,6 +697,7 @@ inline void grid_phase2(
   memset(has_sensor, 0, sizeof(has_sensor));
   memset(sensor_text_mode, 0, sizeof(sensor_text_mode));
   memset(has_icon_on, 0, sizeof(has_icon_on));
+  reset_ha_control_availability_refs();
   clear_internal_relay_watchers();
   navigation_clear_subpages();
 
@@ -736,6 +737,10 @@ inline void grid_phase2(
     int row_span = parsed.row_span[idx - 1] > 0 ? parsed.row_span[idx - 1] : 1;
     int col_span = parsed.col_span[idx - 1] > 0 ? parsed.col_span[idx - 1] : 1;
     bool is_1x1_card = row_span == 1 && col_span == 1;
+    if (p.type == "push") {
+      register_ha_control_availability(s.btn, s.btn);
+      continue;
+    }
     if (bind_basic_sensor_card(s, p, palette)) continue;
     if (bind_passive_card_sources(s, p)) continue;
     if (p.type == "garage") {
@@ -906,6 +911,8 @@ inline void grid_phase2(
       if (!state_entity.empty()) {
         ActionCardStateCtx *ctx = create_action_card_state_context(s, p);
         subscribe_action_card_display_state(ctx, state_entity);
+      } else {
+        register_ha_control_availability(s.btn, s.btn);
       }
       continue;
     }
@@ -1402,6 +1409,7 @@ inline void grid_phase2(
         continue;
       }
       if (sb_cfg.type == "push") {
+        register_ha_control_availability(sb_btn, sb_btn);
         std::string push_label = sb_cfg.label.empty() ? "Push" : sb_cfg.label;
         std::string *label = new std::string(push_label);
         lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
@@ -1434,6 +1442,8 @@ inline void grid_phase2(
           if (!state_entity.empty()) {
             ActionCardStateCtx *action_ctx = create_action_card_state_context(sub_slot, sb_cfg);
             subscribe_action_card_display_state(action_ctx, state_entity);
+          } else {
+            register_ha_control_availability(sub_slot.btn, sub_slot.btn);
           }
           ParsedCfg *ctx = new ParsedCfg(sb_cfg);
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
@@ -1721,6 +1731,7 @@ inline void grid_phase2(
 
     lv_obj_set_user_data(slots[si].btn, (void *)sub_scr);
   }
+  if (!ha_api_state_connected()) apply_registered_ha_control_availability(false);
   refresh_weather_forecast_cards();
   grid_log_memory("end");
   ESP_LOGI("sensors", "Phase 2: done (%lu ms)", esphome::millis());

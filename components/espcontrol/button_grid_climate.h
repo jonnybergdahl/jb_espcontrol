@@ -1798,6 +1798,7 @@ inline ClimateControlCtx *create_climate_control_context(
 
 inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
   if (!ctx || ctx->entity_id.empty()) return;
+  register_ha_control_availability(ctx->btn, ctx->btn);
   auto refresh = [ctx]() {
     climate_update_card(ctx);
     climate_control_set_modal_value(ctx);
