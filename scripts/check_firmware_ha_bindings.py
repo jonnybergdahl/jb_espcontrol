@@ -250,6 +250,12 @@ def firmware_weather_request_errors(firmware_dir: Path, root: Path) -> list[str]
         errors.append(f"{rel}: accept both direct and entity-keyed Home Assistant forecast response shapes")
     if "entity_response['temperature_unit']" not in text or "state_attr(entity, 'temperature_unit')" not in text:
         errors.append(f"{rel}: preserve forecast temperature units from response data or weather entity attributes")
+    if (
+        "native_temperature" not in text
+        or "native_templow" not in text
+        or "native_temperature_unit" not in text
+    ):
+        errors.append(f"{rel}: accept native Home Assistant forecast temperature fields and units")
     if "parse_weather_forecast_temp" in text and "std::isfinite(parsed)" not in text:
         errors.append(f"{rel}: reject non-finite weather forecast temperatures before rendering")
     if (
