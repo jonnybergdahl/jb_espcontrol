@@ -98,7 +98,7 @@ script:
           cfg.subpage_chevron_font = id(font_trmnl_label_14)->get_lv_font();
           cfg.climate_option_title_font = id(font_trmnl_label_14)->get_lv_font();
           cfg.climate_option_value_font = id(font_trmnl_label_14)->get_lv_font();
-          cfg.temperature_unit = "Auto";
+          cfg.temperature_unit = id(temperature_unit_select).current_option();
           cfg.timezone = "UTC (GMT+0)";
 
           grid_phase1(slots, cfg,

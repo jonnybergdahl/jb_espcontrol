@@ -114,6 +114,15 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
                 assert "set_dashboard_content_changed_callback" in sensors, (
                     f"{slug}: shared weather/card updates must be wired to e-paper refreshes"
                 )
+                assert "cfg.temperature_unit = id(temperature_unit_select).current_option();" in sensors, (
+                    f"{slug}: weather cards must use the configured temperature unit"
+                )
+                assert "id: temperature_unit_select" in device, (
+                    f"{slug}: device.yaml must expose the temperature unit setting used by weather cards"
+                )
+                assert 'set_display_temperature_unit(id(temperature_unit_select).current_option(), "UTC (GMT+0)")' in device, (
+                    f"{slug}: temperature unit changes must update the shared display unit helper"
+                )
         else:
             assert f"cfg.num_slots = {profile['slots']};" in sensors, f"{slug}: sensors.yaml missing slot count"
 
@@ -164,6 +173,19 @@ def test_weather_card_mode_visibility_reset() -> None:
     )
 
 
+def test_temperature_unit_changes_refresh_weather_cards() -> None:
+    config = (ROOT / "components" / "espcontrol" / "button_grid_config.h").read_text(encoding="utf-8")
+    match = re.search(
+        r"inline void refresh_temperature_unit_labels\(\)[\s\S]*?\n\}",
+        config,
+    )
+    assert match, "temperature unit label refresh helper is missing"
+    body = match.group(0)
+    assert "notify_dashboard_content_changed()" in body, (
+        "temperature unit changes must refresh e-paper weather cards"
+    )
+
+
 def test_firmware_matrices(profile_slugs: list[str]) -> None:
     profiles = load_device_profiles()
     release = device_matrix.release_matrix(profiles)
@@ -189,6 +211,7 @@ def main() -> int:
     test_trmnl_epaper_icon_literals()
     test_weather_card_device_badges()
     test_weather_card_mode_visibility_reset()
+    test_temperature_unit_changes_refresh_weather_cards()
     test_firmware_matrices(profile_slugs)
     test_public_firmware_slugs(profile_slugs)
     print("Device profile cross-checks passed.")

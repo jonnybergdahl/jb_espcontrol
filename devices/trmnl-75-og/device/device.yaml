@@ -139,6 +139,31 @@ button:
         - script.execute: trmnl_sync_dashboard_config
         - script.execute: trmnl_refresh_display_full
 
+select:
+  - platform: template
+    name: "${entity_screen_temperature_unit}"
+    internal: true
+    disabled_by_default: true
+    id: temperature_unit_select
+    entity_category: config
+    icon: "mdi:temperature-celsius"
+    optimistic: true
+    restore_value: true
+    initial_option: "Auto"
+    options:
+      - "Auto"
+      - "°C"
+      - "°F"
+    web_server:
+      sorting_group_id: sg_display
+      sorting_weight: 10
+    on_value:
+      then:
+        - lambda: |-
+            set_display_temperature_unit(id(temperature_unit_select).current_option(), "UTC (GMT+0)");
+            refresh_temperature_unit_labels();
+        - script.execute: trmnl_refresh_display_when_ready
+
 time:
   - platform: sntp
     id: trmnl_time
