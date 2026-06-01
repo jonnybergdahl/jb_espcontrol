@@ -1189,6 +1189,7 @@ inline std::string weather_label_for_state(const std::string &state) {
 }
 
 struct WeatherForecastCardRef {
+  lv_obj_t *btn;
   lv_obj_t *value_lbl;
   lv_obj_t *unit_lbl;
   lv_obj_t *label_lbl;
@@ -1301,6 +1302,7 @@ inline void apply_weather_forecast_to_entity(const std::string &entity_id,
       refs[i].low = low;
       refs[i].source_unit = unit;
       refs[i].status_label = "";
+      apply_control_availability(refs[i].btn, refs[i].btn, valid, false);
       apply_weather_forecast_card_text(refs[i], valid, high, low, unit);
       notify_dashboard_content_changed();
     }
@@ -1318,6 +1320,7 @@ inline void apply_weather_forecast_unavailable_for_entity(const std::string &ent
       refs[i].low = 0;
       refs[i].source_unit = "";
       refs[i].status_label = "";
+      apply_control_availability(refs[i].btn, refs[i].btn, false, false);
       apply_weather_forecast_card_text(refs[i], false, 0, 0, "");
       notify_dashboard_content_changed();
     }
@@ -1334,6 +1337,7 @@ inline void apply_weather_forecast_unavailable_all() {
     refs[i].low = 0;
     refs[i].source_unit = "";
     refs[i].status_label = "";
+    apply_control_availability(refs[i].btn, refs[i].btn, false, false);
     apply_weather_forecast_card_text(refs[i], false, 0, 0, "");
   }
   if (count > 0) notify_dashboard_content_changed();
@@ -1352,6 +1356,7 @@ inline void apply_weather_forecast_actions_required_for_entity(const std::string
       refs[i].low = 0;
       refs[i].source_unit = "";
       refs[i].status_label = "HA Actions";
+      apply_control_availability(refs[i].btn, refs[i].btn, false, false);
       apply_weather_forecast_card_text(refs[i], false, 0, 0, "");
       notify_dashboard_content_changed();
     }
@@ -1375,7 +1380,8 @@ inline bool weather_forecast_request_matches(const std::string &entity_id,
   return entity_id == other_entity_id && day == other_day;
 }
 
-inline void register_weather_forecast_card(lv_obj_t *value_lbl, lv_obj_t *unit_lbl,
+inline void register_weather_forecast_card(lv_obj_t *btn,
+                                           lv_obj_t *value_lbl, lv_obj_t *unit_lbl,
                                            lv_obj_t *label_lbl,
                                            const std::string &entity_id,
                                            const std::string &day,
@@ -1386,7 +1392,7 @@ inline void register_weather_forecast_card(lv_obj_t *value_lbl, lv_obj_t *unit_l
     return;
   }
   weather_forecast_card_refs()[count++] = {
-    value_lbl, unit_lbl, label_lbl, entity_id, day, label, "", false, 0, 0, ""
+    btn, value_lbl, unit_lbl, label_lbl, entity_id, day, label, "", false, 0, 0, ""
   };
   apply_weather_forecast_card_text(weather_forecast_card_refs()[count - 1], false, 0, 0, "");
 }

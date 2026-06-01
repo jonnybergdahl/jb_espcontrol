@@ -274,6 +274,13 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
                     and "inline void apply_weather_forecast_unavailable_all()" in config
                     and "if (count > 0) notify_dashboard_content_changed();" in config
                 ), f"{slug}: Home Assistant disconnect must clear visible forecast weather cards"
+                card_helpers = BUTTON_GRID_CARDS.read_text(encoding="utf-8")
+                assert (
+                    "lv_obj_t *btn;" in config
+                    and "register_weather_forecast_card(s.btn, s.sensor_lbl, s.unit_lbl, s.text_lbl," in card_helpers
+                    and "apply_control_availability(refs[i].btn, refs[i].btn, false, false);" in config
+                    and "apply_control_availability(refs[i].btn, refs[i].btn, valid, false);" in config
+                ), f"{slug}: forecast weather cards must dim and restore availability like current weather cards"
         else:
             assert f"cfg.num_slots = {profile['slots']};" in sensors, f"{slug}: sensors.yaml missing slot count"
 
