@@ -198,6 +198,22 @@ def test_temperature_unit_changes_refresh_weather_cards() -> None:
     )
 
 
+def test_current_weather_state_updates_availability() -> None:
+    subscriptions = (ROOT / "components" / "espcontrol" / "button_grid_subscriptions.h").read_text(encoding="utf-8")
+    match = re.search(
+        r"inline void subscribe_weather_state\([\s\S]*?\n\}",
+        subscriptions,
+    )
+    assert match, "current weather state subscription is missing"
+    body = match.group(0)
+    assert "apply_control_availability(btn_ptr, btn_ptr, !unavailable, false)" in body, (
+        "current weather cards must clear unavailable styling when Home Assistant sends a valid state"
+    )
+    assert "notify_dashboard_content_changed()" in body, (
+        "current weather state changes must refresh TRMNL e-paper"
+    )
+
+
 def test_trmnl_weather_forecast_queue_drains() -> None:
     device = (ROOT / "devices" / "trmnl-75-og" / "device" / "device.yaml").read_text(encoding="utf-8")
     assert "weather_forecast_cancel_stale_requests();" in device, (
@@ -237,6 +253,7 @@ def main() -> int:
     test_weather_card_device_badges()
     test_weather_card_mode_visibility_reset()
     test_temperature_unit_changes_refresh_weather_cards()
+    test_current_weather_state_updates_availability()
     test_trmnl_weather_forecast_queue_drains()
     test_firmware_matrices(profile_slugs)
     test_public_firmware_slugs(profile_slugs)
