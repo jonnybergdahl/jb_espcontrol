@@ -1678,6 +1678,8 @@ inline void request_weather_forecast_entity(const std::string &entity_id,
   if (!ha_action_send(req)) {
     weather_forecast_clear_pending(req.call_id);
     ha_cancel_action_response_callback(req.call_id, "send failed");
+    apply_weather_forecast_unavailable_for_entity(entity_id);
+    weather_forecast_schedule_retry(entity_id, day, "send failed");
     weather_forecast_send_next_queued();
   }
 }

@@ -226,6 +226,11 @@ def firmware_weather_request_errors(firmware_dir: Path, root: Path) -> list[str]
         errors.append(f"{rel}: wait for Home Assistant state subscription before automatic forecast requests")
     if "ha_cancel_action_response_callback(req.call_id" not in text:
         errors.append(f"{rel}: cancel forecast response callbacks when sends fail")
+    if (
+        'ha_cancel_action_response_callback(req.call_id, "send failed");' in body
+        and 'weather_forecast_schedule_retry(entity_id, day, "send failed");' not in body
+    ):
+        errors.append(f"{rel}: retry weather forecast sends that fail after callback registration")
     if "WEATHER_FORECAST_PENDING_MAX" not in text or "weather_forecast_track_pending" not in text:
         errors.append(f"{rel}: bound pending forecast response callbacks")
     if "weather_forecast_cancel_pending_requests" not in text:
@@ -1084,6 +1089,24 @@ def run_self_test() -> int:
         "  if (!ha_action_send(req)) return;\n"
         "}\n",
         ("cancel forecast response callbacks",),
+    )
+    expect_weather_request_errors(
+        "weather send failure missing retry",
+        "inline void request_weather_forecast_entity() {\n"
+        "  constexpr int WEATHER_FORECAST_PENDING_MAX = 8;\n"
+        "  constexpr uint32_t WEATHER_FORECAST_RETRY_DELAY_MS = 300000;\n"
+        "  weather_forecast_track_pending(req.call_id);\n"
+        "  weather_forecast_cancel_pending_requests();\n"
+        "  weather_forecast_schedule_retry(entity_id, day, \"setup failed\");\n"
+        "  if (!ha_api_state_connected()) return;\n"
+        "  ha_register_action_response_callback(req.call_id, cb);\n"
+        "  if (!ha_action_send(req)) {\n"
+        "    weather_forecast_clear_pending(req.call_id);\n"
+        "    ha_cancel_action_response_callback(req.call_id, \"send failed\");\n"
+        "    weather_forecast_send_next_queued();\n"
+        "  }\n"
+        "}\n",
+        ("retry weather forecast sends that fail after callback registration",),
     )
     expect_weather_request_errors(
         "unbounded weather callbacks",
