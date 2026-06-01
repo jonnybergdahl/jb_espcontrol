@@ -1116,8 +1116,8 @@ struct WeatherForecastCardRef {
   std::string label;
   std::string status_label;
   bool valid = false;
-  int high = 0;
-  int low = 0;
+  float high = 0.0f;
+  float low = 0.0f;
   std::string source_unit;
 };
 
@@ -1135,7 +1135,7 @@ inline void reset_weather_forecast_cards() {
   weather_forecast_card_count() = 0;
 }
 
-constexpr int WEATHER_FORECAST_TEMP_MISSING = 32767;
+constexpr float WEATHER_FORECAST_TEMP_MISSING = 32767.0f;
 constexpr int WEATHER_FORECAST_PENDING_MAX = 8;
 constexpr uint32_t WEATHER_FORECAST_REQUEST_TIMEOUT_MS = 60000;
 constexpr uint32_t WEATHER_FORECAST_RETRY_DELAY_MS = 300000;
@@ -1163,13 +1163,14 @@ inline std::string weather_forecast_unit_symbol(const std::string &unit) {
   return display_temperature_unit_symbol();
 }
 
-inline int weather_forecast_display_temp(int value, const std::string &unit) {
+inline int weather_forecast_display_temp(float value, const std::string &unit) {
   if (value == WEATHER_FORECAST_TEMP_MISSING) return value;
-  return convert_temperature_value_for_display(value, unit);
+  float converted = convert_temperature_value_for_display_float(value, unit);
+  return static_cast<int>(converted >= 0.0f ? converted + 0.5f : converted - 0.5f);
 }
 
 inline void apply_weather_forecast_card_text(const WeatherForecastCardRef &ref,
-                                             bool valid, int high, int low,
+                                             bool valid, float high, float low,
                                              const std::string &unit) {
   if (ref.label_lbl) {
     std::string label = !ref.status_label.empty()
@@ -1200,9 +1201,9 @@ inline void apply_weather_forecast_card_text(const WeatherForecastCardRef &ref,
 
 inline void apply_weather_forecast_to_entity(const std::string &entity_id,
                                              const std::string &day,
-                                             bool valid, int high, int low,
+                                             bool valid, float high, float low,
                                              const std::string &unit) {
-  ESP_LOGI("weather_forecast", "Applying %s forecast for %s: %s high=%d low=%d unit=%s",
+  ESP_LOGI("weather_forecast", "Applying %s forecast for %s: %s high=%.1f low=%.1f unit=%s",
     day.c_str(), entity_id.c_str(), valid ? "valid" : "unavailable",
     high, low, unit.c_str());
   WeatherForecastCardRef *refs = weather_forecast_card_refs();
@@ -1287,22 +1288,22 @@ inline bool weather_forecast_entity_id_safe(const std::string &entity_id) {
   return true;
 }
 
-inline bool parse_weather_forecast_temp(const std::string &value, int &out) {
+inline bool parse_weather_forecast_temp(const std::string &value, float &out) {
   if (value.empty()) return false;
   char *end = nullptr;
   float parsed = strtof(value.c_str(), &end);
   if (end == value.c_str()) return false;
-  out = static_cast<int>(parsed >= 0 ? parsed + 0.5f : parsed - 0.5f);
+  out = parsed;
   return true;
 }
 
 struct WeatherForecastPayload {
   bool today_valid = false;
-  int today_high = WEATHER_FORECAST_TEMP_MISSING;
-  int today_low = WEATHER_FORECAST_TEMP_MISSING;
+  float today_high = WEATHER_FORECAST_TEMP_MISSING;
+  float today_low = WEATHER_FORECAST_TEMP_MISSING;
   bool tomorrow_valid = false;
-  int tomorrow_high = WEATHER_FORECAST_TEMP_MISSING;
-  int tomorrow_low = WEATHER_FORECAST_TEMP_MISSING;
+  float tomorrow_high = WEATHER_FORECAST_TEMP_MISSING;
+  float tomorrow_low = WEATHER_FORECAST_TEMP_MISSING;
   std::string unit;
 };
 

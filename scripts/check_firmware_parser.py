@@ -127,9 +127,14 @@ int main() {
   assert(legacy_weather_forecast.label == "");
   set_display_temperature_unit("\u00B0F", "UTC (GMT+0)");
   assert(convert_temperature_value_for_display(10, "\u00B0C") == 50);
+  assert(convert_temperature_value_for_display(10, "\u00B0F") == 10);
+  assert(convert_temperature_value_for_display_float(10.4f, "\u00B0C") > 50.7f);
+  assert(convert_temperature_value_for_display_float(10.4f, "\u00B0C") < 50.8f);
   assert(convert_temperature_value_for_display(50, "\u00B0F") == 50);
   set_display_temperature_unit("\u00B0C", "UTC (GMT+0)");
   assert(convert_temperature_value_for_display(50, "\u00B0F") == 10);
+  assert(convert_temperature_value_for_display_float(50.7f, "\u00B0F") > 10.3f);
+  assert(convert_temperature_value_for_display_float(50.7f, "\u00B0F") < 10.4f);
   assert(convert_temperature_value_for_display(10, "\u00B0C") == 10);
 
   auto migrated = parse_cfg("media_player.living:Living:Speaker:Auto:controls::media");

@@ -88,15 +88,21 @@ inline const char *display_temperature_unit_symbol() {
   return display_temperature_uses_fahrenheit() ? "\u00B0F" : "\u00B0C";
 }
 
-inline int convert_temperature_value_for_display(int value,
-                                                 const std::string &source_unit) {
+inline float convert_temperature_value_for_display_float(float value,
+                                                         const std::string &source_unit) {
   std::string source = normalize_temperature_unit_option(source_unit);
   if (source != "\u00B0F" && source != "\u00B0C") return value;
   bool target_fahrenheit = display_temperature_uses_fahrenheit();
   if ((source == "\u00B0F") == target_fahrenheit) return value;
-  float converted = target_fahrenheit
-    ? (static_cast<float>(value) * 9.0f / 5.0f) + 32.0f
+  return target_fahrenheit
+    ? (value * 9.0f / 5.0f) + 32.0f
     : (static_cast<float>(value) - 32.0f) * 5.0f / 9.0f;
+}
+
+inline int convert_temperature_value_for_display(int value,
+                                                 const std::string &source_unit) {
+  float converted = convert_temperature_value_for_display_float(
+    static_cast<float>(value), source_unit);
   return static_cast<int>(converted >= 0.0f ? converted + 0.5f : converted - 0.5f);
 }
 
