@@ -12,6 +12,7 @@ constexpr int CLIMATE_DEFAULT_HIGH_TENTHS = 220;
 constexpr int CLIMATE_DEFAULT_MIN_TENTHS = 50;
 constexpr int CLIMATE_DEFAULT_MAX_TENTHS = 350;
 constexpr int CLIMATE_DEFAULT_STEP_TENTHS = 5;
+constexpr int CLIMATE_WHOLE_NUMBER_STEP_TENTHS = 10;
 constexpr uint32_t CLIMATE_TEMP_DEBOUNCE_MS = 450;
 constexpr int CLIMATE_MODAL_ARC_SIZE_PERCENT = 88;
 constexpr int CLIMATE_MODAL_JC4880P443_ARC_SIZE_PERCENT = 96;
@@ -244,15 +245,16 @@ inline int climate_clamp_tenths(ClimateControlCtx *ctx, int value) {
 
 inline int climate_effective_step_tenths(ClimateControlCtx *ctx) {
   if (!ctx) return CLIMATE_DEFAULT_STEP_TENTHS;
-  if (ctx->step_tenths > CLIMATE_DEFAULT_STEP_TENTHS && ctx->step_tenths <= 100)
+  int minimum = ctx->precision <= 0 ? CLIMATE_WHOLE_NUMBER_STEP_TENTHS : CLIMATE_DEFAULT_STEP_TENTHS;
+  if (ctx->step_tenths > minimum && ctx->step_tenths <= 100)
     return ctx->step_tenths;
-  return CLIMATE_DEFAULT_STEP_TENTHS;
+  return minimum;
 }
 
 inline int climate_round_to_step(ClimateControlCtx *ctx, int value) {
   if (!ctx) return value;
   int step = climate_effective_step_tenths(ctx);
-  int base = ctx->min_tenths;
+  int base = ctx->precision <= 0 ? 0 : ctx->min_tenths;
   int delta = value - base;
   int rounded = base + ((delta >= 0 ? delta + step / 2 : delta - step / 2) / step) * step;
   return climate_clamp_tenths(ctx, rounded);

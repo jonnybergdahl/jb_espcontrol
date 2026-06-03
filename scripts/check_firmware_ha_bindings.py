@@ -389,17 +389,24 @@ def firmware_climate_step_errors(firmware_dir: Path, root: Path) -> list[str]:
         re.DOTALL,
     )
     if not helper:
-        errors.append(f"{rel}: keep climate temperature changes at 0.5 degree minimum")
+        errors.append(f"{rel}: keep climate temperature changes at a display-appropriate minimum")
     else:
         body = helper.group("body")
-        if "CLIMATE_DEFAULT_STEP_TENTHS" not in body or "ctx->step_tenths > CLIMATE_DEFAULT_STEP_TENTHS" not in body:
-            errors.append(f"{rel}: keep climate temperature changes at 0.5 degree minimum")
+        if (
+            "CLIMATE_DEFAULT_STEP_TENTHS" not in body
+            or "CLIMATE_WHOLE_NUMBER_STEP_TENTHS" not in body
+            or "ctx->precision <= 0" not in body
+            or "ctx->step_tenths > minimum" not in body
+        ):
+            errors.append(f"{rel}: keep climate temperature changes at a display-appropriate minimum")
     if "int step = climate_effective_step_tenths(ctx);" not in text:
-        errors.append(f"{rel}: round climate targets using the minimum 0.5 degree step")
+        errors.append(f"{rel}: round climate targets using the display-appropriate minimum step")
+    if "int base = ctx->precision <= 0 ? 0 : ctx->min_tenths;" not in text:
+        errors.append(f"{rel}: round whole-number climate targets to whole-degree boundaries")
     if "climate_selected_target(ui.active) - ui.active->step_tenths" in text:
-        errors.append(f"{rel}: use the minimum 0.5 degree step for the climate minus button")
+        errors.append(f"{rel}: use the display-appropriate minimum step for the climate minus button")
     if "climate_selected_target(ui.active) + ui.active->step_tenths" in text:
-        errors.append(f"{rel}: use the minimum 0.5 degree step for the climate plus button")
+        errors.append(f"{rel}: use the display-appropriate minimum step for the climate plus button")
     return errors
 
 
@@ -1323,10 +1330,11 @@ def run_self_test() -> int:
         ("cancel pending cover stop callbacks when the HA API disconnects",),
     )
     expect_climate_step_errors(
-        "climate accepts sub-0.5 degree step",
+        "climate ignores whole-number display step",
         "constexpr int CLIMATE_DEFAULT_STEP_TENTHS = 5;\n"
         "inline int climate_round_to_step(ClimateControlCtx *ctx, int value) {\n"
         "  int step = ctx->step_tenths;\n"
+        "  int base = ctx->min_tenths;\n"
         "  return value;\n"
         "}\n"
         "inline void climate_control_open_modal(ClimateControlCtx *ctx) {\n"
@@ -1334,23 +1342,27 @@ def run_self_test() -> int:
         "  climate_selected_target(ui.active) + ui.active->step_tenths;\n"
         "}\n",
         (
-            "keep climate temperature changes at 0.5 degree minimum",
-            "round climate targets using the minimum 0.5 degree step",
-            "use the minimum 0.5 degree step for the climate minus button",
-            "use the minimum 0.5 degree step for the climate plus button",
+            "keep climate temperature changes at a display-appropriate minimum",
+            "round climate targets using the display-appropriate minimum step",
+            "round whole-number climate targets to whole-degree boundaries",
+            "use the display-appropriate minimum step for the climate minus button",
+            "use the display-appropriate minimum step for the climate plus button",
         ),
     )
     expect_climate_step_errors(
-        "climate enforces 0.5 degree minimum step",
+        "climate enforces display-appropriate minimum step",
         "constexpr int CLIMATE_DEFAULT_STEP_TENTHS = 5;\n"
+        "constexpr int CLIMATE_WHOLE_NUMBER_STEP_TENTHS = 10;\n"
         "inline int climate_effective_step_tenths(ClimateControlCtx *ctx) {\n"
         "  if (!ctx) return CLIMATE_DEFAULT_STEP_TENTHS;\n"
-        "  if (ctx->step_tenths > CLIMATE_DEFAULT_STEP_TENTHS && ctx->step_tenths <= 100)\n"
+        "  int minimum = ctx->precision <= 0 ? CLIMATE_WHOLE_NUMBER_STEP_TENTHS : CLIMATE_DEFAULT_STEP_TENTHS;\n"
+        "  if (ctx->step_tenths > minimum && ctx->step_tenths <= 100)\n"
         "    return ctx->step_tenths;\n"
-        "  return CLIMATE_DEFAULT_STEP_TENTHS;\n"
+        "  return minimum;\n"
         "}\n"
         "inline int climate_round_to_step(ClimateControlCtx *ctx, int value) {\n"
         "  int step = climate_effective_step_tenths(ctx);\n"
+        "  int base = ctx->precision <= 0 ? 0 : ctx->min_tenths;\n"
         "  return value + step;\n"
         "}\n"
         "inline void climate_control_open_modal(ClimateControlCtx *ctx) {\n"
