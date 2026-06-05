@@ -22,18 +22,26 @@ api:
         bool is_home_assistant = client_info.find("Home Assistant") != std::string::npos;
         if (is_home_assistant && ha_api_state_connected()) {
           apply_registered_ha_control_availability(true);
+          ha_retry_unavailable_states(true);
           refresh_weather_forecast_cards();
         }
     - delay: 2s
     - lambda: |-
+        if (ha_api_state_connected()) ha_retry_unavailable_states(true);
         todo_reload_active_modal();
     - delay: 8s
     - lambda: |-
-        if (ha_api_state_connected()) refresh_weather_forecast_cards();
+        if (ha_api_state_connected()) {
+          ha_retry_unavailable_states(true);
+          refresh_weather_forecast_cards();
+        }
         todo_reload_active_modal();
     - delay: 20s
     - lambda: |-
-        if (ha_api_state_connected()) refresh_weather_forecast_cards();
+        if (ha_api_state_connected()) {
+          ha_retry_unavailable_states(true);
+          refresh_weather_forecast_cards();
+        }
         todo_reload_active_modal();
   on_client_disconnected:
     - lambda: |-
@@ -53,6 +61,7 @@ interval:
       - lambda: |-
           weather_forecast_cancel_stale_requests();
           weather_forecast_send_next_queued();
+          ha_retry_unavailable_states();
           todo_retry_waiting_modal();
 
   - interval: 1h

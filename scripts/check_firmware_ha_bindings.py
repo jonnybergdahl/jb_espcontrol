@@ -50,6 +50,7 @@ DIRECT_HA_PATTERNS = (
     (re.compile(r"\bglobal_api_server\b"), "access Home Assistant API through button_grid_ha.h helpers"),
     (re.compile(r"->send_homeassistant_action\s*\("), "send Home Assistant actions through button_grid_ha.h helpers"),
     (re.compile(r"->subscribe_home_assistant_state\s*\("), "subscribe to Home Assistant state through button_grid_ha.h helpers"),
+    (re.compile(r"->get_home_assistant_state\s*\("), "get Home Assistant state through button_grid_ha.h helpers"),
     (re.compile(r"->register_action_response_callback\s*\("), "register action callbacks through button_grid_ha.h helpers"),
 )
 STATE_HELPER_PATTERN = re.compile(
@@ -101,6 +102,19 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
         errors.append(f"{rel}: missing ha_subscribe_state helper")
     elif "heap_available" in state_helper.group("body"):
         errors.append(f"{rel}: keep core HA state subscriptions off the low-heap guard")
+    elif "ha_note_state_retry_result" not in state_helper.group("body"):
+        errors.append(f"{rel}: track unavailable subscribed states for reconnect retries")
+
+    if (
+        "ha_retry_unavailable_states" not in text
+        or "ha_unavailable_state_retry_refs" not in text
+        or "HA_UNAVAILABLE_STATE_RETRY_INTERVAL_MS" not in text
+    ):
+        errors.append(f"{rel}: retry unavailable subscribed states after Home Assistant finishes startup")
+    if "ha_entity_state_unavailable_ref(entity_id, state)" not in text:
+        errors.append(f"{rel}: use entity-aware unavailable checks for subscribed state retries")
+    if "ha_reset_unavailable_state_retries" not in text:
+        errors.append(f"{rel}: expose a helper to clear stale unavailable state retries")
 
     attribute_helper = ATTRIBUTE_HELPER_PATTERN.search(text)
     if not attribute_helper:
@@ -120,6 +134,38 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
     elif "ha_api_state_connected()" not in action_send_match.group("body"):
         errors.append(f"{rel}: send Home Assistant actions only after state subscription is ready")
 
+    return errors
+
+
+def firmware_unavailable_retry_errors(
+    firmware_dir: Path,
+    core_infra_path: Path,
+    root: Path,
+) -> list[str]:
+    config_path = firmware_dir / "button_grid_config.h"
+    errors: list[str] = []
+    if config_path.exists():
+        config_rel = config_path.relative_to(root)
+        config_text = config_path.read_text(encoding="utf-8")
+        bump_match = re.search(
+            r"inline\s+void\s+bump_ha_subscription_generation\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
+            config_text,
+            re.DOTALL,
+        )
+        if not bump_match or "ha_reset_unavailable_state_retries()" not in bump_match.group("body"):
+            errors.append(f"{config_rel}: clear stale unavailable state retries when subscriptions are rebuilt")
+
+    if core_infra_path.exists():
+        core_rel = core_infra_path.relative_to(root)
+        core_text = core_infra_path.read_text(encoding="utf-8")
+        if "ha_retry_unavailable_states" not in core_text:
+            errors.append(f"{core_rel}: retry unavailable HA states after reconnects and during maintenance")
+        interval_match = re.search(
+            r"(?ms)^interval:\n(?P<body>.*?)(?:^logger:|\Z)",
+            core_text,
+        )
+        if not interval_match or "ha_retry_unavailable_states();" not in interval_match.group("body"):
+            errors.append(f"{core_rel}: periodically retry unavailable HA states")
     return errors
 
 
@@ -524,6 +570,7 @@ def run_scan() -> int:
     errors.extend(firmware_weather_request_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_weather_disconnect_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_weather_reconnect_errors(CORE_INFRA_PATH, ROOT))
+    errors.extend(firmware_unavailable_retry_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_cover_request_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_climate_step_errors(FIRMWARE_DIR, ROOT))
     errors.extend(
@@ -796,6 +843,11 @@ def run_self_test() -> int:
         "direct state subscription",
         {"button_grid_media.h": "api->subscribe_home_assistant_state(entity, {}, cb);\n"},
         ("subscribe to Home Assistant state through button_grid_ha.h helpers",),
+    )
+    expect_errors(
+        "direct state get",
+        {"button_grid_media.h": "api->get_home_assistant_state(entity, {}, cb);\n"},
+        ("get Home Assistant state through button_grid_ha.h helpers",),
     )
     expect_errors(
         "direct callback registration",
