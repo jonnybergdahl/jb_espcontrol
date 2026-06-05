@@ -148,7 +148,8 @@ script:
             - if:
                 condition:
                   lambda: |-
-                    return (id(media_player_sleep_prevention_enabled).state && id(media_player_playing)) ||
+                    return id(cover_art_screensaver_active) ||
+                           (id(media_player_sleep_prevention_enabled).state && id(media_player_playing)) ||
                            (id(cover_art_screensaver_enabled).state && id(cover_art_media_playing));
                 then:
                   - script.execute: screensaver_idle_check
@@ -165,30 +166,36 @@ script:
   - id: screensaver_sleep_timer
     mode: restart
     then:
-      - lambda: |-
-          media_volume_hide_modal();
-          climate_control_hide_modal();
-          option_select_hide_modal();
-          switch_confirmation_hide_modal();
-          alarm_pin_hide_modal();
-          network_status_hide_modal();
-      - script.execute: hide_cover_art_view
       - if:
           condition:
-            lambda: 'return screensaver_action_clock_mode(id(screensaver_action).current_option());'
+            lambda: 'return id(cover_art_screensaver_active);'
           then:
-            - globals.set:
-                id: display_asleep
-                value: 'true'
-            - script.execute: show_clock_view
+            - script.execute: screensaver_idle_check
           else:
+            - lambda: |-
+                media_volume_hide_modal();
+                climate_control_hide_modal();
+                option_select_hide_modal();
+                switch_confirmation_hide_modal();
+                alarm_pin_hide_modal();
+                network_status_hide_modal();
+            - script.execute: hide_cover_art_view
             - if:
                 condition:
-                  lambda: 'return screensaver_action_dimmed_mode(id(screensaver_action).current_option());'
+                  lambda: 'return screensaver_action_clock_mode(id(screensaver_action).current_option());'
                 then:
-                  - script.execute: show_dimmed_view
+                  - globals.set:
+                      id: display_asleep
+                      value: 'true'
+                  - script.execute: show_clock_view
                 else:
-                  - script.execute: screensaver_sleep_display_off
+                  - if:
+                      condition:
+                        lambda: 'return screensaver_action_dimmed_mode(id(screensaver_action).current_option());'
+                      then:
+                        - script.execute: show_dimmed_view
+                      else:
+                        - script.execute: screensaver_sleep_display_off
 
   # Sensor mode honours the same clock/display-off setting as timer mode.
   - id: screensaver_sleep_sensor
