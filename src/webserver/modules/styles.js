@@ -56,8 +56,6 @@ var CSS =
   ".sp-clockbar-section-add{height:min(36px,calc(100% - .45cqw));min-height:0;width:min(36px,calc(var(--topbar-fs)*2.2));min-width:28px;border:1px dashed rgba(255,255,255,.22);border-radius:calc(var(--topbar-fs)*.3);" +
   "background:rgba(255,255,255,.06);color:#fff;display:flex;align-items:center;justify-content:center;box-sizing:border-box;" +
   "cursor:pointer;opacity:0;pointer-events:none;transition:opacity .16s,background .16s,border-color .16s;line-height:1;font:inherit}" +
-  ".sp-clockbar-middle .sp-clockbar-section-add{position:absolute;top:50%;right:0;z-index:2;transform:translateY(-50%)}" +
-  ".sp-clockbar-middle.sp-clockbar-section-empty .sp-clockbar-section-add{position:static;transform:none}" +
   ".sp-clockbar-section:hover .sp-clockbar-section-add,.sp-clockbar-section:focus-within .sp-clockbar-section-add,.sp-clockbar-section-empty .sp-clockbar-section-add{opacity:1;pointer-events:auto}" +
   ".sp-clockbar-section-add:hover{background:rgba(255,255,255,.13);border-color:rgba(255,255,255,.36)}" +
   ".sp-temp{color:#fff;font-size:var(--topbar-fs);white-space:nowrap;opacity:0;transition:opacity .3s}" +
