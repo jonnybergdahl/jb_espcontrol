@@ -8,7 +8,7 @@ EspControl lets you put the Home Assistant controls you use every day onto a ded
 
 You do not need to write code, edit YAML, or build your own ESPHome setup. Install the firmware from a web browser, connect the screen to WiFi, add it to Home Assistant, then choose what appears on the display from the screen's built-in setup page.
 
-**Documentation and install guide:** [jtenniswood.github.io/espcontrol](https://jtenniswood.github.io/espcontrol/)
+**Documentation and install guide:** [jonnybergdahl.github.io/espcontrol](https://jonnybergdahl.github.io/espcontrol/)
 
 ## What It Unlocks
 
@@ -48,7 +48,7 @@ If Home Assistant can see it, EspControl is designed to make it easier to put th
 
 After that, the panel runs on its own. You can still change the layout at any time from a phone, tablet, or computer browser.
 
-Start here: [Install EspControl](https://jtenniswood.github.io/espcontrol/getting-started/install)
+Start here: [Install EspControl](https://jonnybergdahl.github.io/espcontrol/getting-started/install)
 
 ## Supported Screens
 
@@ -62,7 +62,7 @@ EspControl supports several low-cost ESP32 touchscreens. Larger screens give you
 | Panel | [AliExpress ~£40](https://s.click.aliexpress.com/e/_c4W6TYvp) | [AliExpress ~£40](https://s.click.aliexpress.com/e/_c335W0r5) | [AliExpress ~£24](https://s.click.aliexpress.com/e/_c32jr3eN) | [AliExpress ~£45](https://s.click.aliexpress.com/e/_c3O6ndAX) | [AliExpress ~£16](https://s.click.aliexpress.com/e/_c3sIhvBv) |
 | 3D mount | [MakerWorld](https://makerworld.com/en/models/2490049-guition-p4-10inch-screen-stand#profileId-2736046) | [MakerWorld](https://makerworld.com/en/models/2387421-guition-esp32p4-jc1060p470-7inch-screen-desk-mount#profileId-2614995) | - | [MakerWorld](https://makerworld.com/en/models/2720366-waveshare-esp32-p4-smart-86-box-screen-desk-stand#profileId-3013481) | [MakerWorld](https://makerworld.com/en/models/2581572-guition-esp32s3-4848s040-case-stand#profileId-2847301) |
 
-See the [screen guides](https://jtenniswood.github.io/espcontrol/getting-started/install) for full details on each model.
+See the [screen guides](https://jonnybergdahl.github.io/espcontrol/getting-started/install) for full details on each model.
 
 ## Built for Everyday Use
 
@@ -85,10 +85,10 @@ See the [screen guides](https://jtenniswood.github.io/espcontrol/getting-started
 
 ## Project Links
 
-- [Documentation](https://jtenniswood.github.io/espcontrol/)
-- [Install guide](https://jtenniswood.github.io/espcontrol/getting-started/install)
-- [FAQ](https://jtenniswood.github.io/espcontrol/reference/faq)
-- [Report a bug or request a feature](https://github.com/jtenniswood/espcontrol/issues)
+- [Documentation](https://jonnybergdahl.github.io/espcontrol/)
+- [Install guide](https://jonnybergdahl.github.io/espcontrol/getting-started/install)
+- [FAQ](https://jonnybergdahl.github.io/espcontrol/reference/faq)
+- [Report a bug or request a feature](https://github.com/jonnybergdahl/espcontrol/issues)
 
 ## Contributor Checks
 
@@ -120,6 +120,6 @@ Required notice: see [NOTICE](NOTICE).
 
 If EspControl is useful in your home, you can support ongoing development by buying me a coffee.
 
-<a href="https://www.buymeacoffee.com/jtenniswood">
+<a href="https://github.com/jonnybergdahl/espcontrol">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="60" style="border-radius:999px;" />
 </a>

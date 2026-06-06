@@ -18,7 +18,7 @@ import firmware_release
 SLUG = "demo-panel"
 VERSION = "v9.8.7"
 CHIP = "ESP32-S3"
-PROJECT_NAME = "jtenniswood.espcontrol"
+PROJECT_NAME = "jonnybergdahl.espcontrol"
 
 
 class QuietHandler(SimpleHTTPRequestHandler):

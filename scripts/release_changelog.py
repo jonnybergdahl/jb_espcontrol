@@ -17,7 +17,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_REPO_URL = "https://github.com/jtenniswood/espcontrol"
+DEFAULT_REPO_URL = "https://github.com/jonnybergdahl/espcontrol"
 STABLE_TAG_RE = re.compile(r"^v\d+\.\d+\.\d+$")
 PR_RE = re.compile(r"\(#(?P<number>\d+)\)")
 

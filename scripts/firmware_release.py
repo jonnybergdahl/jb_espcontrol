@@ -22,8 +22,8 @@ from urllib.parse import urljoin
 ROOT = Path(__file__).resolve().parent.parent
 FIRMWARE_VERSION_PLACEHOLDER = '  firmware_version: "0.0.0"'
 PLACEHOLDER_STRINGS = {"dev", "0.0.0"}
-RELEASE_URL_BASE = "https://github.com/jtenniswood/espcontrol/releases/tag/"
-PROJECT_NAME = "jtenniswood.espcontrol"
+RELEASE_URL_BASE = "https://github.com/jonnybergdahl/espcontrol/releases/tag/"
+PROJECT_NAME = "jonnybergdahl.espcontrol"
 
 
 class FirmwareReleaseError(RuntimeError):

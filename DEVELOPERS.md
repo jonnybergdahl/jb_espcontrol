@@ -3,7 +3,7 @@
 This guide is for contributors working on the firmware or the web configurator —
 running things locally, flashing devices, reading logs, and adding or fixing a
 widget (card type). For end-user install/usage, see `README.md` and the
-[documentation site](https://jtenniswood.github.io/espcontrol/).
+[documentation site](https://jonnybergdahl.github.io/espcontrol/).
 
 ---
 
@@ -69,7 +69,7 @@ The configurator page is served **by the device**, but the `www.js` bundle it
 loads is fetched at runtime from GitHub Pages:
 
 ```
-https://jtenniswood.github.io/espcontrol/webserver/<slug>/www.js
+https://jonnybergdahl.github.io/espcontrol/webserver/<slug>/www.js
 ```
 
 (The default URL is set as `js_url` in `common/device/core_infra.yaml`.) To test

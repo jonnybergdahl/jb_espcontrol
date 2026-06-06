@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitepress'
 
-const hostname = 'https://jtenniswood.github.io/espcontrol/'
+const hostname = 'https://jonnybergdahl.github.io/espcontrol/'
 const defaultImage = {
   url: `${hostname}images/home_screen_hero.jpg`,
   width: '1024',
@@ -225,7 +225,7 @@ export default defineConfig({
     [
       'script',
       {},
-      `document.addEventListener('DOMContentLoaded',function(){if(document.querySelector('.sp-support-btn'))return;var link=document.createElement('a');link.className='sp-support-btn';link.href='https://www.buymeacoffee.com/jtenniswood';link.target='_blank';link.rel='noopener';link.innerHTML='<img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="60" style="border-radius:999px;">';document.body.appendChild(link);});`,
+      `document.addEventListener('DOMContentLoaded',function(){if(document.querySelector('.sp-support-btn'))return;var link=document.createElement('a');link.className='sp-support-btn';link.href='https://github.com/jonnybergdahl/espcontrol';link.target='_blank';link.rel='noopener';link.innerHTML='<img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="60" style="border-radius:999px;">';document.body.appendChild(link);});`,
     ],
     [
       'script',
@@ -253,8 +253,8 @@ export default defineConfig({
             url: hostname,
             author: {
               '@type': 'Person',
-              name: 'jtenniswood',
-              url: 'https://github.com/jtenniswood',
+              name: .jonnybergdahl.,
+              url: 'https://github.com/jonnybergdahl',
             },
             offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
           },
@@ -309,7 +309,7 @@ export default defineConfig({
         description,
         url: canonicalUrl,
         isPartOf: { '@id': `${hostname}#website` },
-        author: { '@type': 'Person', name: 'jtenniswood', url: 'https://github.com/jtenniswood' },
+        author: { '@type': 'Person', name: .jonnybergdahl., url: 'https://github.com/jonnybergdahl' },
       }
       if (isHowTo) {
         articleSchema.step =
@@ -365,8 +365,8 @@ export default defineConfig({
   themeConfig: {
     nav: [
       { text: 'Install', link: '/getting-started/install' },
-      { text: 'Issues', link: 'https://github.com/jtenniswood/espcontrol/issues' },
-      { text: 'GitHub', link: 'https://github.com/jtenniswood/espcontrol' },
+      { text: 'Issues', link: 'https://github.com/jonnybergdahl/espcontrol/issues' },
+      { text: 'GitHub', link: 'https://github.com/jonnybergdahl/espcontrol' },
     ],
 
     sidebar: [
@@ -457,11 +457,11 @@ export default defineConfig({
     ],
 
     editLink: {
-      pattern: 'https://github.com/jtenniswood/espcontrol/edit/main/docs/:path',
+      pattern: 'https://github.com/jonnybergdahl/espcontrol/edit/main/docs/:path',
       text: 'Edit this page on GitHub',
     },
 
-    socialLinks: [{ icon: 'github', link: 'https://github.com/jtenniswood/espcontrol' }],
+    socialLinks: [{ icon: 'github', link: 'https://github.com/jonnybergdahl/espcontrol' }],
 
     search: {
       provider: 'local',
