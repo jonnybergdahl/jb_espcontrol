@@ -54,6 +54,9 @@ espcontrol:
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
+  platformio_options:
+    build_flags:
+      - "-DESPCONTROL_DISABLE_TODO=1"
   on_boot:
     - priority: 800
       then:
