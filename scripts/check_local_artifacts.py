@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import subprocess
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,11 +20,34 @@ SKIP_PATHS = {
     Path("docs/.vitepress/dist"),
     Path("builds/.esphome"),
 }
+TRACKED_ARTIFACT_SUFFIXES = (".pyc", ".pyo")
+TRACKED_ARTIFACT_NAMES = {".DS_Store"}
 
 
 def should_skip_dir(path: Path) -> bool:
     rel = path.relative_to(ROOT)
     return path.name in SKIP_DIRS or rel in SKIP_PATHS
+
+
+def find_tracked_local_artifacts() -> list[Path]:
+    result = subprocess.run(
+        ["git", "ls-files", "-z"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+    )
+    paths = []
+    for raw_path in result.stdout.split(b"\0"):
+        if not raw_path:
+            continue
+        path = Path(raw_path.decode())
+        if (
+            "__pycache__" in path.parts
+            or path.name in TRACKED_ARTIFACT_NAMES
+            or path.suffix in TRACKED_ARTIFACT_SUFFIXES
+        ):
+            paths.append(path)
+    return sorted(paths)
 
 
 def main() -> int:
@@ -44,6 +68,14 @@ def main() -> int:
         for path in sorted(ds_store_files):
             print(f"  {path}")
         print("Remove them before committing.")
+        return 1
+
+    tracked_artifacts = find_tracked_local_artifacts()
+    if tracked_artifacts:
+        print("Found generated local files tracked by git:")
+        for path in tracked_artifacts:
+            print(f"  {path}")
+        print("Remove them from version control before committing.")
         return 1
 
     print("Local artifact check passed.")

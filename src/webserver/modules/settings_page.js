@@ -1,5 +1,27 @@
 // ── Settings Page ──────────────────────────────────────────────────────
 
+function settingsStatusHeader(title) {
+  var header = document.createElement("div");
+  header.className = "sp-settings-status-header";
+
+  var label = document.createElement("div");
+  label.className = "sp-settings-status-title";
+  label.textContent = title;
+  header.appendChild(label);
+
+  return header;
+}
+
+function appendSettingsSection(parent, title, cards) {
+  var visibleCards = cards.filter(Boolean);
+  if (!visibleCards.length) return;
+
+  parent.appendChild(settingsStatusHeader(title));
+  visibleCards.forEach(function (card) {
+    parent.appendChild(card);
+  });
+}
+
 function buildSettingsPage(parent) {
   var page = document.createElement("div");
   page.id = "sp-settings";
@@ -10,28 +32,72 @@ function buildSettingsPage(parent) {
 
   var appearBody = document.createElement("div");
 
-  appearBody.appendChild(fieldLabel("Primary"));
-  var onColor = colorField("sp-set-on-color", "FF8C00", function (hex) {
-    postText(entityName("button_on_color"), hex);
-  });
-  appearBody.appendChild(onColor);
-  els.setOnColor = onColor;
+  if (isEpaperPreview()) {
+    var themeField = document.createElement("div");
+    themeField.className = "sp-field";
+    themeField.appendChild(fieldLabel("Theme", "sp-set-theme"));
+    var themeSelect = document.createElement("select");
+    themeSelect.className = "sp-select";
+    themeSelect.id = "sp-set-theme";
+    state.themeOptions.forEach(function (opt) {
+      var o = document.createElement("option");
+      o.value = opt;
+      o.textContent = opt;
+      themeSelect.appendChild(o);
+    });
+    themeSelect.value = normalizeTheme(state.theme);
+    themeSelect.addEventListener("change", function () {
+      applyThemePreset(this.value, true);
+    });
+    themeField.appendChild(themeSelect);
+    appearBody.appendChild(themeField);
+    els.setTheme = themeSelect;
+  } else {
+    appearBody.appendChild(fieldLabel("Primary"));
+    var onColor = colorField("sp-set-on-color", "0073FF", function (hex) {
+      postText(entityName("button_on_color"), hex);
+    });
+    appearBody.appendChild(onColor);
+    els.setOnColor = onColor;
 
-  appearBody.appendChild(fieldLabel("Secondary"));
-  var offColor = colorField("sp-set-off-color", "313131", function (hex) {
-    postText(entityName("button_off_color"), hex);
-  });
-  appearBody.appendChild(offColor);
-  els.setOffColor = offColor;
+    appearBody.appendChild(fieldLabel("Secondary"));
+    var offColor = colorField("sp-set-off-color", "CECECE", function (hex) {
+      postText(entityName("button_off_color"), hex);
+    });
+    appearBody.appendChild(offColor);
+    els.setOffColor = offColor;
 
-  appearBody.appendChild(fieldLabel("Tertiary"));
-  var sensorColor = colorField("sp-set-sensor-color", "212121", function (hex) {
-    postText(entityName("sensor_card_color"), hex);
-  });
-  appearBody.appendChild(sensorColor);
-  els.setSensorColor = sensorColor;
+    appearBody.appendChild(fieldLabel("Tertiary"));
+    var sensorColor = colorField("sp-set-sensor-color", "DEDEDE", function (hex) {
+      postText(entityName("sensor_card_color"), hex);
+    });
+    appearBody.appendChild(sensorColor);
+    els.setSensorColor = sensorColor;
+  }
 
-  config.appendChild(makeCollapsibleCard("Appearance", appearBody, true));
+  var appearanceCard = makeCollapsibleCard("Appearance", appearBody, true);
+
+  var languageBody = document.createElement("div");
+  var languageField = document.createElement("div");
+  languageField.className = "sp-field";
+  languageField.appendChild(fieldLabel("Language", "sp-set-language"));
+  var languageSelect = document.createElement("select");
+  languageSelect.className = "sp-select";
+  languageSelect.id = "sp-set-language";
+  state.languageOptions = languageOptionsWithFallback(state.languageOptions, state.language);
+  state.languageOptions.forEach(function (opt) {
+    appendLanguageOption(languageSelect, opt);
+  });
+  languageSelect.value = normalizeLanguage(state.language);
+  languageSelect.addEventListener("change", function () {
+    state.language = normalizeLanguage(this.value);
+    postSelect(entityName("screen_language"), state.language);
+    renderPreview();
+  });
+  languageField.appendChild(languageSelect);
+  languageBody.appendChild(languageField);
+  var languageCard = makeCollapsibleCard("Language", languageBody, true);
+  els.setLanguage = languageSelect;
 
   var blBody = document.createElement("div");
 
@@ -61,7 +127,7 @@ function buildSettingsPage(parent) {
   els.sunInfo = sunInfo;
   updateSunInfo();
 
-  config.appendChild(makeCollapsibleCard("Backlight", blBody, true));
+  var backlightCard = makeCollapsibleCard("Backlight", blBody, true);
 
   var scheduleBody = document.createElement("div");
   var scheduleToggle = toggleRow("Night Schedule", "sp-set-schedule-enabled", state.scheduleEnabled);
@@ -273,7 +339,6 @@ function buildSettingsPage(parent) {
 
   var ntpField = document.createElement("div");
   ntpField.className = "sp-field";
-  ntpField.appendChild(fieldLabel("NTP Servers", "sp-set-custom-ntp-servers"));
   state.customNtpServers = state.customNtpServers || hasCustomNtpServers();
   var customNtpServers = toggleRow("Custom NTP Servers", "sp-set-custom-ntp-servers", state.customNtpServers);
   ntpField.appendChild(customNtpServers.row);
@@ -325,60 +390,6 @@ function buildSettingsPage(parent) {
   syncNtpServerUi();
   clockBody.appendChild(ntpField);
 
-  var monthNamesField = document.createElement("div");
-  monthNamesField.className = "sp-field";
-  monthNamesField.appendChild(fieldLabel("Advanced Date Labels", "sp-set-custom-month-names"));
-  state.monthNames = normalizeMonthNames(state.monthNames);
-  state.customMonthNames = state.customMonthNames || hasCustomMonthNames();
-  var customMonthNames = toggleRow("Custom Month Names", "sp-set-custom-month-names", state.customMonthNames);
-  monthNamesField.appendChild(customMonthNames.row);
-  els.setCustomMonthNamesToggle = customMonthNames.input;
-  customMonthNames.input.addEventListener("change", function () {
-    state.customMonthNames = this.checked;
-    if (!state.customMonthNames) {
-      resetMonthNamesToDefaults();
-      postText(entityName("screen_month_names"), serializeMonthNames(state.monthNames));
-      renderPreview();
-    }
-    syncMonthNameUi();
-  });
-
-  var monthList = document.createElement("div");
-  monthList.className = "sp-field-stack";
-  els.setMonthNameFields = monthList;
-  els.setMonthNameInputs = [];
-
-  function addMonthNameInput(index) {
-    var input = textInput(
-      "sp-set-month-name-" + (index + 1),
-      state.monthNames[index],
-      MONTH_NAME_DEFAULTS[index]
-    );
-    input.setAttribute("aria-label", MONTH_NAME_DEFAULTS[index] + " label");
-    input.addEventListener("blur", function () {
-      var names = normalizeMonthNames(state.monthNames);
-      names[index] = this.value.trim() || MONTH_NAME_DEFAULTS[index];
-      state.monthNames = names;
-      this.value = names[index];
-      state.customMonthNames = hasCustomMonthNames();
-      syncMonthNameUi();
-      postText(entityName("screen_month_names"), serializeMonthNames(state.monthNames));
-      renderPreview();
-    });
-    input.addEventListener("keydown", function (e) {
-      if (e.key === "Enter") this.blur();
-    });
-    monthList.appendChild(input);
-    els.setMonthNameInputs.push(input);
-  }
-
-  for (var monthIndex = 0; monthIndex < 12; monthIndex++) {
-    addMonthNameInput(monthIndex);
-  }
-  monthNamesField.appendChild(monthList);
-  syncMonthNameUi();
-  clockBody.appendChild(monthNamesField);
-
   var timeSettingsCard = makeCollapsibleCard("Time Settings", clockBody, true);
 
   var clockBarBody = document.createElement("div");
@@ -392,58 +403,15 @@ function buildSettingsPage(parent) {
     postClockBar(state.clockBarOn);
   });
 
-  var networkStatus = toggleRow("Show Network Status Icon", "sp-set-network-status-icon", state.networkStatusOn);
-  clockBarBody.appendChild(networkStatus.row);
-  els.setNetworkStatusToggle = networkStatus.input;
-  networkStatus.input.addEventListener("change", function () {
-    state.networkStatusOn = this.checked;
-    syncClockBarUi();
-    postNetworkStatusIcon(state.networkStatusOn);
-  });
-
-  var outdoor = createEntityToggleSection("Outdoor Temperature", "sp-set-outdoor-toggle", state._outdoorOn,
-    entityName("outdoor_temp_enable"), entityName("outdoor_temp_entity"), "Outdoor Temp Entity", "sensor.outdoor_temperature");
-  clockBarBody.appendChild(outdoor.toggle.row);
-  clockBarBody.appendChild(outdoor.field);
-  els.setOutdoorToggle = outdoor.toggle.input;
-  els.setOutdoorField = outdoor.field;
-  els.setOutdoorEntity = outdoor.input;
-  outdoor.toggle.input.addEventListener("change", function () {
-    state._outdoorOn = this.checked;
-    syncTemperatureUi();
-    updateTempPreview();
-  });
-
-  var indoor = createEntityToggleSection("Indoor Temperature", "sp-set-indoor-toggle", state._indoorOn,
-    entityName("indoor_temp_enable"), entityName("indoor_temp_entity"), "Indoor Temp Entity", "sensor.indoor_temperature");
-  clockBarBody.appendChild(indoor.toggle.row);
-  clockBarBody.appendChild(indoor.field);
-  els.setIndoorToggle = indoor.toggle.input;
-  els.setIndoorField = indoor.field;
-  els.setIndoorEntity = indoor.input;
-  indoor.toggle.input.addEventListener("change", function () {
-    state._indoorOn = this.checked;
-    syncTemperatureUi();
-    updateTempPreview();
-  });
-
-  var degreeSymbol = toggleRow("Show Degree Symbol", "sp-set-temperature-degree-symbol", state.temperatureDegreeSymbolOn);
-  clockBarBody.appendChild(degreeSymbol.row);
-  els.setTemperatureDegreeSymbolToggle = degreeSymbol.input;
-  degreeSymbol.input.addEventListener("change", function () {
-    state.temperatureDegreeSymbolOn = this.checked;
-    syncClockBarUi();
-    postTemperatureDegreeSymbol(state.temperatureDegreeSymbolOn);
-  });
-
   var clockBarBadge = document.createElement("span");
   clockBarBadge.setAttribute("aria-label", "Clock bar on");
   clockBarBadge.innerHTML = '<span class="sp-card-badge-dot"></span><span>ON</span>';
   els.setClockBarBadge = clockBarBadge;
   syncClockBarUi();
   syncTemperatureUi();
-  config.appendChild(makeCollapsibleCard("Clock Bar", clockBarBody, true, clockBarBadge));
+  var clockBarCard = makeCollapsibleCard("Clock Bar", clockBarBody, true, clockBarBadge);
 
+  var rotationCard = null;
   if (CFG.features && CFG.features.screenRotation) {
     var rotationBody = document.createElement("div");
     var rotField = document.createElement("div");
@@ -464,7 +432,7 @@ function buildSettingsPage(parent) {
     });
     rotField.appendChild(rotSelect);
     rotationBody.appendChild(rotField);
-    config.appendChild(makeCollapsibleCard("Rotation", rotationBody, true));
+    rotationCard = makeCollapsibleCard("Rotation", rotationBody, true);
     els.setScreenRotation = rotSelect;
   }
 
@@ -498,7 +466,7 @@ function buildSettingsPage(parent) {
   els.setTemperatureUnit = unitSelect;
 
   syncTemperatureUi();
-  config.appendChild(makeCollapsibleCard("Temperature", tempBody, true));
+  var temperatureCard = makeCollapsibleCard("Temperature Settings", tempBody, true);
 
   var ssBody = document.createElement("div");
   var ssMode = getActiveScreensaverMode();
@@ -578,6 +546,132 @@ function buildSettingsPage(parent) {
   els.setMediaPlayerSleepPrevention = mediaPlayerInp;
   els.setMediaPlayerSleepPreventionField = mediaPlayerField;
 
+  var coverArtBody = document.createElement("div");
+  if (!isEpaperPreview()) {
+    var coverArtToggle = toggleRow(
+      "Cover Art While Playing",
+      "sp-set-ss-cover-art-enable",
+      state.coverArtScreensaverOn);
+    coverArtBody.appendChild(coverArtToggle.row);
+    coverArtToggle.input.addEventListener("change", function () {
+      state.coverArtScreensaverOn = this.checked;
+      syncCoverArtScreensaverUi();
+      postSwitch(entityName("screen_saver_cover_art"), state.coverArtScreensaverOn);
+    });
+    els.setCoverArtToggle = coverArtToggle.input;
+
+    var coverArtOptions = condField();
+
+    var coverArtEntityField = document.createElement("div");
+    coverArtEntityField.className = "sp-field";
+    coverArtEntityField.appendChild(fieldLabel("Cover Art Media Player", "sp-set-ss-cover-art-player"));
+    var coverArtEntityInp = entityInput(
+      "sp-set-ss-cover-art-player",
+      state.coverArtMediaPlayerEntity,
+      "e.g. media_player.living_room",
+      ["media_player"]);
+    coverArtEntityField.appendChild(coverArtEntityInp);
+    coverArtOptions.appendChild(coverArtEntityField);
+    bindTextPost(coverArtEntityInp, entityName("screen_saver_cover_art_entity"), {
+      onBlur: function (value) { state.coverArtMediaPlayerEntity = value; },
+    });
+    els.setCoverArtMediaPlayer = coverArtEntityInp;
+
+    var coverArtDelayField = document.createElement("div");
+    coverArtDelayField.className = "sp-field";
+    coverArtDelayField.appendChild(fieldLabel("Show Cover Art After", "sp-set-ss-cover-art-delay"));
+    var coverArtDelaySelect = document.createElement("select");
+    coverArtDelaySelect.className = "sp-select";
+    coverArtDelaySelect.id = "sp-set-ss-cover-art-delay";
+    [
+      { label: "5 seconds", value: 5 },
+      { label: "10 seconds", value: 10 },
+      { label: "30 seconds", value: 30 },
+      { label: "1 minute", value: 60 },
+      { label: "5 minutes", value: 300 },
+    ].forEach(function (opt) {
+      var o = document.createElement("option");
+      o.value = opt.value;
+      o.textContent = opt.label;
+      coverArtDelaySelect.appendChild(o);
+    });
+    coverArtDelaySelect.addEventListener("change", function () {
+      state.coverArtDelay = parseFloat(this.value) || 0;
+      postNumber(entityName("screen_saver_cover_art_delay"), state.coverArtDelay);
+    });
+    coverArtDelayField.appendChild(coverArtDelaySelect);
+    coverArtOptions.appendChild(coverArtDelayField);
+    els.setCoverArtDelay = coverArtDelaySelect;
+
+    var trackOverlayField = document.createElement("div");
+    trackOverlayField.className = "sp-field";
+    trackOverlayField.appendChild(fieldLabel("Track Overlay Duration", "sp-set-ss-track-overlay"));
+    var trackOverlaySelect = document.createElement("select");
+    trackOverlaySelect.className = "sp-select";
+    trackOverlaySelect.id = "sp-set-ss-track-overlay";
+    [
+      { label: "Hidden", value: 0 },
+      { label: "3 seconds", value: 3 },
+      { label: "5 seconds", value: 5 },
+      { label: "10 seconds", value: 10 },
+      { label: "30 seconds", value: 30 },
+      { label: "1 minute", value: 60 },
+    ].forEach(function (opt) {
+      var o = document.createElement("option");
+      o.value = opt.value;
+      o.textContent = opt.label;
+      trackOverlaySelect.appendChild(o);
+    });
+    trackOverlaySelect.addEventListener("change", function () {
+      state.coverArtTrackOverlayDuration = parseFloat(this.value) || 0;
+      postNumber(entityName("screen_saver_track_overlay_duration"), state.coverArtTrackOverlayDuration);
+    });
+    trackOverlayField.appendChild(trackOverlaySelect);
+    coverArtOptions.appendChild(trackOverlayField);
+    els.setCoverArtTrackOverlayDuration = trackOverlaySelect;
+
+    var coverArtProgressBarToggle = toggleRow(
+      "Show Track Progress Bar",
+      "sp-set-ss-cover-art-progress-bar",
+      state.coverArtProgressBarOn);
+    coverArtOptions.appendChild(coverArtProgressBarToggle.row);
+    coverArtProgressBarToggle.input.addEventListener("change", function () {
+      state.coverArtProgressBarOn = this.checked;
+      postSwitch(entityName("screen_saver_cover_art_progress_bar"), state.coverArtProgressBarOn);
+    });
+    els.setCoverArtProgressBarToggle = coverArtProgressBarToggle.input;
+
+    var coverArtOpenSubpageToggle = toggleRow(
+      "Open Media Subpage While Playing",
+      "sp-set-ss-cover-art-open-media",
+      state.coverArtOpenMediaSubpageOn);
+    coverArtOptions.appendChild(coverArtOpenSubpageToggle.row);
+    coverArtOpenSubpageToggle.input.addEventListener("change", function () {
+      state.coverArtOpenMediaSubpageOn = this.checked;
+      syncCoverArtScreensaverUi();
+      postSwitch(entityName("screen_saver_open_media_subpage"), state.coverArtOpenMediaSubpageOn);
+    });
+    els.setCoverArtOpenMediaSubpageToggle = coverArtOpenSubpageToggle.input;
+
+    var coverArtSubpageField = document.createElement("div");
+    coverArtSubpageField.className = "sp-field sp-cond-field";
+    coverArtSubpageField.appendChild(fieldLabel("Media Subpage", "sp-set-ss-cover-art-media-subpage"));
+    var coverArtSubpageSelect = document.createElement("select");
+    coverArtSubpageSelect.className = "sp-select";
+    coverArtSubpageSelect.id = "sp-set-ss-cover-art-media-subpage";
+    coverArtSubpageSelect.addEventListener("change", function () {
+      state.coverArtMediaSubpageTarget = this.value || "";
+      postText(entityName("screen_saver_media_subpage"), state.coverArtMediaSubpageTarget);
+    });
+    coverArtSubpageField.appendChild(coverArtSubpageSelect);
+    coverArtOptions.appendChild(coverArtSubpageField);
+    els.setCoverArtMediaSubpageField = coverArtSubpageField;
+    els.setCoverArtMediaSubpage = coverArtSubpageSelect;
+
+    els.setCoverArtOptions = coverArtOptions;
+    coverArtBody.appendChild(coverArtOptions);
+  }
+
   ssBody.appendChild(timerPanel);
   els.setSSTimeout = timeoutSelect;
   syncScreensaverTimeoutUi();
@@ -608,6 +702,7 @@ function buildSettingsPage(parent) {
   els.setSensorClockBrightnessField = sensorClockControls.brightnessField;
   syncClockScreensaverControls();
   syncMediaPlayerSleepPreventionUi();
+  syncCoverArtScreensaverUi();
 
   var ssBadge = document.createElement("span");
   ssBadge.setAttribute("aria-label", "Screensaver on");
@@ -678,9 +773,11 @@ function buildSettingsPage(parent) {
   idleBadge.innerHTML = '<span class="sp-card-badge-dot"></span><span>ON</span>';
   els.setIdleBadge = idleBadge;
   syncIdleUi();
-  config.appendChild(makeCollapsibleCard("Idle", idleBody, true, idleBadge));
-  config.appendChild(screensaverCard);
-  config.appendChild(scheduleCard);
+  var idleCard = makeCollapsibleCard("Idle", idleBody, true, idleBadge);
+  var coverArtCard = null;
+  if (!isEpaperPreview()) {
+    coverArtCard = makeCollapsibleCard("Media Cover Art", coverArtBody, true);
+  }
 
   var backupBody = document.createElement("div");
 
@@ -700,8 +797,7 @@ function buildSettingsPage(parent) {
   backupRow.appendChild(importBtn);
 
   backupBody.appendChild(backupRow);
-  config.appendChild(timeSettingsCard);
-  config.appendChild(makeCollapsibleCard("Backup", backupBody, true));
+  var backupCard = makeCollapsibleCard("Backup", backupBody, true);
 
   var fwBody = document.createElement("div");
 
@@ -803,8 +899,9 @@ function buildSettingsPage(parent) {
   els.setUpdateFreq = freqSelect;
   syncFirmwareUpdateUi();
 
-  config.appendChild(makeCollapsibleCard("Firmware", fwBody, true));
+  var firmwareCard = makeCollapsibleCard("Firmware", fwBody, true);
 
+  var developerCard = null;
   if (developerExperimentalUrlFlag()) {
     var devBody = document.createElement("div");
     var experimentalToggle = toggleRow(
@@ -819,8 +916,29 @@ function buildSettingsPage(parent) {
       scheduleRender();
     });
     els.setDeveloperExperimentalFeatures = experimentalToggle.input;
-    config.appendChild(makeCollapsibleCard("Developer", devBody, true));
+    developerCard = makeCollapsibleCard("Developer", devBody, true);
   }
+
+  appendSettingsSection(config, "Display", [
+    appearanceCard,
+    backlightCard,
+    clockBarCard,
+    rotationCard,
+  ]);
+  appendSettingsSection(config, "Sleep & Schedule", [
+    idleCard,
+    screensaverCard,
+    coverArtCard,
+    scheduleCard,
+  ]);
+  appendSettingsSection(config, "System", [
+    languageCard,
+    timeSettingsCard,
+    temperatureCard,
+    backupCard,
+    firmwareCard,
+    developerCard,
+  ]);
 
   page.appendChild(config);
   page.appendChild(buildApplyBar());
@@ -880,6 +998,69 @@ function syncMediaPlayerSleepPreventionUi() {
   if (els.setMediaPlayerSleepPreventionField) {
     els.setMediaPlayerSleepPreventionField.classList.toggle("sp-visible", !!state.mediaPlayerSleepPreventionOn);
   }
+}
+
+function syncCoverArtScreensaverUi() {
+  syncCoverArtSubpageOptions();
+  if (els.setCoverArtToggle) {
+    els.setCoverArtToggle.checked = !!state.coverArtScreensaverOn;
+  }
+  if (els.setCoverArtOptions) {
+    els.setCoverArtOptions.classList.toggle("sp-visible", !!state.coverArtScreensaverOn);
+  }
+  if (els.setCoverArtDelay) {
+    if (state.coverArtDelay < 5) {
+      state.coverArtDelay = 10;
+      postNumber(entityName("screen_saver_cover_art_delay"), state.coverArtDelay);
+    }
+    setSelectValue(els.setCoverArtDelay, state.coverArtDelay, formatDuration(state.coverArtDelay));
+  }
+  if (els.setCoverArtTrackOverlayDuration) {
+    var value = state.coverArtTrackOverlayDuration;
+    setSelectValue(
+      els.setCoverArtTrackOverlayDuration,
+      value,
+      value > 0 ? formatDuration(value) : "Hidden");
+  }
+  if (els.setCoverArtProgressBarToggle) {
+    els.setCoverArtProgressBarToggle.checked = !!state.coverArtProgressBarOn;
+  }
+  if (els.setCoverArtOpenMediaSubpageToggle) {
+    els.setCoverArtOpenMediaSubpageToggle.checked = !!state.coverArtOpenMediaSubpageOn;
+  }
+  if (els.setCoverArtMediaSubpageField) {
+    els.setCoverArtMediaSubpageField.classList.toggle("sp-visible", !!state.coverArtOpenMediaSubpageOn);
+  }
+}
+
+function syncCoverArtSubpageOptions() {
+  if (!els.setCoverArtMediaSubpage) return;
+
+  var select = els.setCoverArtMediaSubpage;
+  var current = state.coverArtMediaSubpageTarget || "";
+  select.innerHTML = "";
+
+  var foundCurrent = current === "";
+  for (var i = 0; i < state.buttons.length; i++) {
+    var b = state.buttons[i] || {};
+    if (b.type !== "subpage") continue;
+    var slot = i + 1;
+    var label = (b.label || "").trim() || ("Subpage " + slot);
+    var opt = document.createElement("option");
+    opt.value = "slot:" + slot;
+    opt.textContent = label;
+    if (opt.value === current) foundCurrent = true;
+    select.appendChild(opt);
+  }
+
+  if (current && !foundCurrent) {
+    var saved = document.createElement("option");
+    saved.value = current;
+    saved.textContent = current + " (saved)";
+    select.appendChild(saved);
+  }
+
+  select.value = current && foundCurrent ? current : "";
 }
 
 function syncOptionalClockBrightness(field, previousField, display) {

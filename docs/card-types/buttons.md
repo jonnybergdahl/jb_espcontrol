@@ -76,5 +76,5 @@ data:
 ```
 
 ::: info Requires Home Assistant actions
-The panel must be allowed to perform Home Assistant actions for trigger events to work. See [Home Assistant Actions](/getting-started/home-assistant-actions) for setup instructions.
+The panel must be allowed to perform Home Assistant actions for trigger events to work. See [Enable Actions](/getting-started/home-assistant-actions) for setup instructions.
 :::

@@ -38,5 +38,5 @@ Choosing an option sends:
 | `input_select` | `input_select.select_option` |
 
 ::: info Requires Home Assistant actions
-Option Select sends Home Assistant actions from the panel. If selecting an option does nothing, check [Home Assistant Actions](/getting-started/home-assistant-actions).
+Option Select sends Home Assistant actions from the panel. If selecting an option does nothing, check [Enable Actions](/getting-started/home-assistant-actions).
 :::

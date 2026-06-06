@@ -30,6 +30,9 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     switchConfirmationDefaultMessageForMode: switchConfirmationDefaultMessageForMode,
     switchConfirmationYesText: switchConfirmationYesText,
     switchConfirmationNoText: switchConfirmationNoText,
+    normalizeCardOnPattern: normalizeCardOnPattern,
+    cardOnPattern: cardOnPattern,
+    setCardOnPattern: setCardOnPattern,
     sensorActiveColorEnabled: sensorActiveColorEnabled,
     sensorStateLabelsEnabled: sensorStateLabelsEnabled,
     sensorStateInput: sensorStateInput,
@@ -116,6 +119,13 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
       state.developerExperimentalFeatures = oldExperimental;
       return visible;
     },
+    buttonTypePickerKeysForInfoOnly: function (enabled, selectedTypeKey) {
+      var oldInfoOnly = CFG.infoOnly;
+      CFG.infoOnly = !!enabled;
+      var keys = buttonTypePickerKeys(false, selectedTypeKey);
+      CFG.infoOnly = oldInfoOnly;
+      return keys;
+    },
     buttonTypesMissingCardMetadata: function () {
       var missing = [];
       for (var key in BUTTON_TYPES) {
@@ -149,6 +159,22 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     buildSubpageGrid: buildSubpageGrid,
     serializeSubpageGrid: serializeSubpageGrid,
     splitSubpageConfigChunks: EspControlModel.splitSubpageConfigChunks,
+    subpageChunkPostKeysFor: function (full, raw, previousPending) {
+      var oldRaw = state.subpageRaw[1];
+      var oldPending = state.subpageSavePending[1];
+      state.subpageRaw[1] = raw || {};
+      state.subpageSavePending[1] = previousPending || "";
+      var keys = subpageEntityKeys();
+      var chunks = EspControlModel.splitSubpageConfigChunks(full || "", keys.length, 255) || [];
+      var previousPendingChunks = EspControlModel.splitSubpageConfigChunks(
+        state.subpageSavePending[1] || "", keys.length, 255) || [];
+      var out = keys.filter(function (_key, index) {
+        return subpageChunkShouldPost(1, keys, chunks, index, previousPendingChunks);
+      });
+      state.subpageRaw[1] = oldRaw;
+      state.subpageSavePending[1] = oldPending;
+      return out;
+    },
     parseBackOrderToken: parseBackOrderToken,
     backOrderToken: backOrderToken,
     backLabelFromOrder: backLabelFromOrder,
@@ -167,12 +193,14 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
       var oldTimezone = state.timezone;
       var oldUnit = state.temperatureUnit;
       var oldClockFormat = state.clockFormat;
+      var oldLanguage = state.language;
       options = options || {};
       if (options.timezone != null) state.timezone = options.timezone;
       if (options.temperatureUnit != null) {
         state.temperatureUnit = normalizeTemperatureUnit(options.temperatureUnit);
       }
       if (options.clockFormat != null) state.clockFormat = options.clockFormat;
+      if (options.language != null) state.language = normalizeLanguage(options.language);
       var typeDef = BUTTON_TYPES[type || ""];
       var preview = typeDef && typeDef.renderPreview
         ? typeDef.renderPreview(button || {}, { escHtml: escHtml, cardSize: options.cardSize || 1 })
@@ -180,6 +208,7 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
       state.timezone = oldTimezone;
       state.temperatureUnit = oldUnit;
       state.clockFormat = oldClockFormat;
+      state.language = oldLanguage;
       return preview;
     },
     networkPreviewIconSlug: networkPreviewIconSlug,

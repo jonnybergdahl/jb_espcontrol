@@ -18,9 +18,12 @@ struct GridConfig {
   int cols;
   bool width_compensation_vertical = false;
   bool wrap_tall_labels;
+  bool info_only = false;
   bool subpage_chevrons_enabled = true;
   int width_compensation_percent = 100;
   int volume_width_compensation_percent = 100;
+  int label_lines = 0;
+  int label_lines_tall = 0;
   int color_correction_red_percent = COLOR_CORRECTION_RED_PERCENT;
   int color_correction_green_percent = COLOR_CORRECTION_GREEN_PERCENT;
   int color_correction_blue_percent = COLOR_CORRECTION_BLUE_PERCENT;
@@ -29,6 +32,7 @@ struct GridConfig {
   const lv_font_t *sp_large_sensor_font = nullptr;
   int large_sensor_unit_offset_percent = -10;
   const lv_font_t *media_title_font;
+  const lv_font_t *option_select_value_font = nullptr;
   const lv_font_t *volume_number_font;
   const lv_font_t *volume_label_font = nullptr;
   const lv_font_t *climate_card_icon_font = nullptr;
@@ -62,6 +66,7 @@ inline DisplayProfile display_profile_from_grid_config(const GridConfig &cfg) {
   profile.fonts.sensor = cfg.sp_sensor_font;
   profile.fonts.large_sensor = cfg.sp_large_sensor_font;
   profile.fonts.media_title = cfg.media_title_font;
+  profile.fonts.option_select_value = cfg.option_select_value_font;
   profile.fonts.volume_number = cfg.volume_number_font;
   profile.fonts.volume_label = cfg.volume_label_font;
   profile.fonts.climate_card_icon = cfg.climate_card_icon_font;
@@ -151,22 +156,78 @@ inline lv_align_t wide_large_date_time_card_align(const ParsedCfg &p) {
     : LV_ALIGN_CENTER;
 }
 
+inline void apply_card_label_line_clamp(lv_obj_t *label, const GridConfig &cfg,
+                                        int row_span = 1) {
+  if (!label || cfg.label_lines <= 0) return;
+  int lines = (row_span > 1 && cfg.label_lines_tall > 0)
+    ? cfg.label_lines_tall
+    : cfg.label_lines;
+  if (lines <= 0) return;
+  lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+  lv_obj_set_width(label, lv_pct(100));
+  lv_obj_align(label, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+}
+
+inline bool card_slot_static_child(const BtnSlot &s, lv_obj_t *child) {
+  return child == s.icon_lbl || child == s.sensor_container ||
+         child == s.text_lbl || child == s.subpage_lbl;
+}
+
+inline void reset_card_slot_dynamic_children(BtnSlot &s) {
+  if (!s.btn) return;
+  lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_clear_state(s.btn, LV_STATE_CHECKED);
+  sync_card_checked_text_color(s.btn);
+  lv_obj_clear_state(s.btn, LV_STATE_DISABLED);
+  lv_obj_set_style_opa(s.btn, LV_OPA_COVER, LV_PART_MAIN);
+  if (s.sensor_container) lv_obj_set_user_data(s.sensor_container, nullptr);
+  int32_t count = static_cast<int32_t>(lv_obj_get_child_cnt(s.btn));
+  for (int32_t i = count - 1; i >= 0; i--) {
+    lv_obj_t *child = lv_obj_get_child(s.btn, i);
+    if (!child || card_slot_static_child(s, child)) continue;
+    lv_obj_del(child);
+  }
+}
+
+inline bool info_only_hidden_card_type(const ParsedCfg &p) {
+  if (p.type == "sensor" || p.type == "text_sensor" ||
+      p.type == "door_window" || p.type == "presence" ||
+      p.type == "calendar" || p.type == "clock" || p.type == "timezone" ||
+      p.type == "weather" || p.type == "weather_forecast") {
+    return false;
+  }
+  return true;
+}
+
 inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
                               const GridConfig &cfg,
                               const CardPalette &palette,
                               int row_span = 1,
                               int col_span = 1) {
   const DisplayProfile display = display_profile_from_grid_config(cfg);
+  reset_card_slot_dynamic_children(s);
   apply_button_colors(s.btn, palette.has_on, palette.on_val,
     palette.has_off, palette.off_val);
+  apply_button_on_pattern(s.btn, p.options, palette.has_on, palette.on_val);
+  if (s.sensor_lbl && display_sensor_font(display)) {
+    lv_obj_set_style_text_font(s.sensor_lbl, display_sensor_font(display), LV_PART_MAIN);
+  }
   if (s.unit_lbl) lv_obj_set_style_translate_y(s.unit_lbl, 0, LV_PART_MAIN);
   if (s.unit_lbl) lv_obj_clear_flag(s.unit_lbl, LV_OBJ_FLAG_HIDDEN);
   if (s.text_lbl) lv_obj_clear_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
+  if (s.icon_lbl) lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
   if (s.sensor_container) lv_obj_align(s.sensor_container, LV_ALIGN_TOP_LEFT, 0, 0);
+  if (s.text_lbl) lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
   set_subpage_chevron_visible(
     s, p.type == "subpage" && cfg.subpage_chevrons_enabled,
     cfg.subpage_chevron_x, cfg.subpage_chevron_y,
     cfg.subpage_chevron_text_width_percent);
+
+  if (cfg.info_only && info_only_hidden_card_type(p)) {
+    lv_obj_add_flag(s.btn, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
+    return;
+  }
 
   if (is_text_sensor_card(p)) {
     setup_text_sensor_card(s, p, palette.has_sensor_color, palette.sensor_val);
@@ -283,14 +344,20 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   }
   if (p.type == "action") {
     if (action_card_option_select(p)) {
-      setup_option_select_card(s, p, palette.has_sensor_color, palette.sensor_val);
+      setup_option_select_card(
+        s, p, palette.has_sensor_color, palette.sensor_val,
+        display_option_select_value_font_or(
+          display, s.text_lbl ? lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN) : nullptr));
       return;
     }
     setup_action_card(s, p);
     return;
   }
   if (p.type == "option_select") {
-    setup_option_select_card(s, p, palette.has_sensor_color, palette.sensor_val);
+    setup_option_select_card(
+      s, p, palette.has_sensor_color, palette.sensor_val,
+      display_option_select_value_font_or(
+        display, s.text_lbl ? lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN) : nullptr));
     return;
   }
   if (p.type == "todo") {
@@ -396,8 +463,9 @@ inline bool bind_garage_status_card(BtnSlot &s, const ParsedCfg &p) {
     return false;
   }
   bool show_status = garage_card_show_status(p);
+  std::string fallback_label = p.label.empty() ? espcontrol_i18n(std::string("Garage Door")) : p.label;
   TransientStatusLabel *status_label = create_transient_status_label(
-    s.text_lbl, show_status ? "--" : (p.label.empty() ? "Garage Door" : p.label));
+    s.text_lbl, show_status ? "--" : fallback_label);
   subscribe_garage_state(s.btn, s.icon_lbl, status_label,
     garage_closed_icon(p.icon), garage_open_icon(p.icon_on), p.entity, show_status);
   if (!show_status && p.label.empty())
@@ -412,8 +480,9 @@ inline LockCardCtx *bind_lock_status_card(BtnSlot &s, const ParsedCfg &p) {
   LockCardCtx *ctx = new LockCardCtx();
   ctx->entity_id = p.entity;
   lv_obj_set_user_data(s.btn, ctx);
+  std::string fallback_label = p.label.empty() ? espcontrol_i18n(std::string("Lock")) : p.label;
   TransientStatusLabel *status_label = create_transient_status_label(
-    s.text_lbl, p.label.empty() ? "Lock" : p.label);
+    s.text_lbl, fallback_label);
   subscribe_lock_state(s.btn, s.icon_lbl, status_label,
     lock_locked_icon(p.icon), lock_unlocked_icon(p.icon_on), ctx);
   if (p.label.empty())
@@ -486,7 +555,9 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
                                 const GridConfig &cfg,
                                 int row_span = 1) {
   const DisplayProfile display = display_profile_from_grid_config(cfg);
-  if (cfg.wrap_tall_labels && row_span > 1) {
+  if (cfg.label_lines > 0) {
+    apply_card_label_line_clamp(s.text_lbl, cfg, row_span);
+  } else if (cfg.wrap_tall_labels && row_span > 1) {
     lv_label_set_long_mode(s.text_lbl, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(s.text_lbl, lv_pct(100));
   }
@@ -615,8 +686,10 @@ inline void grid_phase1(
   palette.off_val = has_off ? off_val : DEFAULT_OFF_COLOR;
   palette.sensor_val = has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR;
 
+  bump_ha_subscription_generation();
   reset_calendar_cards();
   reset_timezone_cards();
+  weather_forecast_cancel_pending_requests();
   reset_weather_forecast_cards();
   reset_climate_control_refs();
 
@@ -642,6 +715,7 @@ inline void grid_phase1(
     display_apply_main_width(s.icon_lbl, display);
     display_apply_slot_text_width(s, display);
     setup_card_visual(s, p, cfg, palette, row_span, col_span);
+    refresh_card_layout(s, p, cfg, row_span);
   }
   ESP_LOGI("sensors", "Phase 1: done (%lu ms)", esphome::millis());
 }
@@ -697,6 +771,9 @@ inline void grid_phase2(
   memset(has_sensor, 0, sizeof(has_sensor));
   memset(sensor_text_mode, 0, sizeof(sensor_text_mode));
   memset(has_icon_on, 0, sizeof(has_icon_on));
+  bump_ha_subscription_generation();
+  weather_forecast_cancel_pending_requests();
+  reset_ha_control_availability_refs();
   clear_internal_relay_watchers();
   navigation_clear_subpages();
 
@@ -716,26 +793,32 @@ inline void grid_phase2(
   palette.off_val = has_off ? off_val : DEFAULT_OFF_COLOR;
   palette.sensor_val = has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR;
 
-  OrderResult parsed;
+  OrderResult parsed, order;
   parse_order_string(order_str, NS, parsed);
+  clear_spanned_cells(parsed, NS, COLS, order);
   lv_obj_t *first_card = nullptr;
-  if (parsed.positions[0] >= 1 && parsed.positions[0] <= NS) {
-    first_card = slots[parsed.positions[0] - 1].btn;
+  if (order.positions[0] >= 1 && order.positions[0] <= NS) {
+    first_card = slots[order.positions[0] - 1].btn;
   } else if (NS > 0) {
     first_card = slots[0].btn;
   }
   set_media_home_grid_metrics(main_page_obj, COLS, ROWS, first_card);
 
   for (int pos = 0; pos < NS; pos++) {
-    int idx = parsed.positions[pos];
+    int idx = order.positions[pos];
     if (idx < 1 || idx > NS) continue;
     auto &s = slots[idx - 1];
     std::string scfg = s.config->state;
 
     ParsedCfg p = parse_cfg(scfg);
-    int row_span = parsed.row_span[idx - 1] > 0 ? parsed.row_span[idx - 1] : 1;
-    int col_span = parsed.col_span[idx - 1] > 0 ? parsed.col_span[idx - 1] : 1;
+    int row_span = order.row_span[idx - 1] > 0 ? order.row_span[idx - 1] : 1;
+    int col_span = order.col_span[idx - 1] > 0 ? order.col_span[idx - 1] : 1;
     bool is_1x1_card = row_span == 1 && col_span == 1;
+    if (cfg.info_only && info_only_hidden_card_type(p)) continue;
+    if (p.type == "push") {
+      register_ha_control_availability(s.btn, s.btn);
+      continue;
+    }
     if (bind_basic_sensor_card(s, p, palette)) continue;
     if (bind_passive_card_sources(s, p)) continue;
     if (p.type == "garage") {
@@ -775,10 +858,16 @@ inline void grid_phase2(
       if (p.label.empty())
         subscribe_friendly_name(s.text_lbl, p.entity);
 
-      subscribe_toggle_state(s.btn, s.icon_lbl, s.sensor_container,
-        &has_sensor[idx - 1], &sensor_text_mode[idx - 1],
-        &has_icon_on[idx - 1], &icon_off_cp[idx - 1], &icon_on_cp[idx - 1],
-        nullptr, p.entity, false);
+      if (normalize_subpage_kind(cfg_option_value(p.options, "subpage_kind")) == "climate") {
+        subscribe_climate_subpage_parent_indicator(
+          p.entity, s.btn, s.icon_lbl, has_icon_on[idx - 1],
+          icon_off_cp[idx - 1], icon_on_cp[idx - 1]);
+      } else {
+        subscribe_toggle_state(s.btn, s.icon_lbl, s.sensor_container,
+          &has_sensor[idx - 1], &sensor_text_mode[idx - 1],
+          &has_icon_on[idx - 1], &icon_off_cp[idx - 1], &icon_on_cp[idx - 1],
+          nullptr, p.entity, false);
+      }
       continue;
     }
     if (p.type == "lock") {
@@ -871,7 +960,7 @@ inline void grid_phase2(
     if (p.type == "cover" && cover_toggle_mode(p.sensor)) {
       if (!p.entity.empty()) {
         TransientStatusLabel *status_label = create_transient_status_label(
-          s.text_lbl, p.label.empty() ? "Cover" : p.label);
+          s.text_lbl, p.label.empty() ? espcontrol_i18n(std::string("Cover")) : p.label);
         subscribe_cover_toggle_state(s.btn, s.icon_lbl, status_label,
           slider_icon_off(p.type, p.entity, p.icon), slider_icon_on(p.type, p.entity, p.icon, p.icon_on), p.entity);
         if (p.label.empty())
@@ -1001,7 +1090,9 @@ inline void grid_phase2(
           display_climate_option_value_font(display)
             ? display_climate_option_value_font(display)
             : lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
-          display_media_title_font_or(display, lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN)),
+          display_climate_option_title_font(display)
+            ? display_climate_option_title_font(display)
+            : lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
           display_climate_card_icon_font(display),
           display_icon_font(display),
           display_volume_width_percent(display),
@@ -1082,6 +1173,8 @@ inline void grid_phase2(
     }
   }
 
+  if (cfg.info_only) return;
+
   // --- Subpage creation ---
   // Heap-allocated grid descriptors (never freed -- display lifetime)
   lv_coord_t *sp_col_dsc = new lv_coord_t[COLS + 1];
@@ -1154,8 +1247,11 @@ inline void grid_phase2(
         break;
       }
     }
-    navigation_register_subpage(si + 1, display_order, p.label, sub_scr);
-    lv_obj_set_style_bg_color(sub_scr, lv_color_black(), LV_PART_MAIN);
+    navigation_register_subpage(
+      si + 1, display_order,
+      normalize_subpage_kind(cfg_option_value(p.options, "subpage_kind")),
+      p.label, sub_scr);
+    lv_obj_set_style_bg_color(sub_scr, lv_obj_get_style_bg_color(main_page_obj, LV_PART_MAIN), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(sub_scr, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_layout(sub_scr, LV_LAYOUT_GRID);
     lv_obj_set_grid_dsc_array(sub_scr, sp_col_dsc, sp_row_dsc);
@@ -1212,7 +1308,7 @@ inline void grid_phase2(
       if (set_checked) {
         lv_obj_add_event_cb(btn, [](lv_event_t *e) {
           lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
-          lv_obj_add_state(target, LV_STATE_CHECKED);
+          set_card_checked_state(target, true);
           std::string *en = (std::string *)lv_event_get_user_data(e);
           if (en && !en->empty()) send_toggle_action(*en);
         }, LV_EVENT_CLICKED, &sp_entity_ids[eid_idx]);
@@ -1263,7 +1359,7 @@ inline void grid_phase2(
       if (sb_cfg.type == "cover" && cover_toggle_mode(sb_cfg.sensor)) {
         if (!sb_cfg.entity.empty()) {
           TransientStatusLabel *status_label = create_transient_status_label(
-            sub_slot.text_lbl, sb_cfg.label.empty() ? "Cover" : sb_cfg.label);
+            sub_slot.text_lbl, sb_cfg.label.empty() ? espcontrol_i18n(std::string("Cover")) : sb_cfg.label);
           subscribe_cover_toggle_state(sub_slot.btn, sub_slot.icon_lbl, status_label,
             slider_icon_off(sb_cfg.type, sb_cfg.entity, sb_cfg.icon),
             slider_icon_on(sb_cfg.type, sb_cfg.entity, sb_cfg.icon, sb_cfg.icon_on),
@@ -1402,7 +1498,8 @@ inline void grid_phase2(
         continue;
       }
       if (sb_cfg.type == "push") {
-        std::string push_label = sb_cfg.label.empty() ? "Push" : sb_cfg.label;
+        register_ha_control_availability(sb_btn, sb_btn);
+        std::string push_label = sb_cfg.label.empty() ? espcontrol_i18n(std::string("Push")) : sb_cfg.label;
         std::string *label = new std::string(push_label);
         lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
           std::string *label = (std::string *)lv_event_get_user_data(e);
@@ -1499,9 +1596,11 @@ inline void grid_phase2(
             ParsedCfg *ctx = new ParsedCfg(sb_cfg);
             ctx->sensor = mode;
             lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+              lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
+              if (target && lv_obj_has_state(target, LV_STATE_DISABLED)) return;
               ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
               if (c) send_media_playback_action(c->entity, media_card_mode(c->sensor));
-            }, LV_EVENT_CLICKED, ctx);
+            }, media_fast_press_mode(mode) ? LV_EVENT_PRESSED : LV_EVENT_CLICKED, ctx);
             if (mode == "play_pause")
               subscribe_media_state(sub_slot.btn,
                 media_play_pause_show_state(sb_cfg) ? sub_slot.text_lbl : nullptr,
@@ -1572,7 +1671,9 @@ inline void grid_phase2(
             display_climate_option_value_font(display)
               ? display_climate_option_value_font(display)
               : lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
-            display_media_title_font_or(display, lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN)),
+            display_climate_option_title_font(display)
+              ? display_climate_option_title_font(display)
+              : lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
             display_climate_card_icon_font(display),
             display_icon_font(display),
             display_volume_width_percent(display),
@@ -1721,6 +1822,7 @@ inline void grid_phase2(
 
     lv_obj_set_user_data(slots[si].btn, (void *)sub_scr);
   }
+  if (!ha_api_state_connected()) apply_registered_ha_control_availability(false);
   refresh_weather_forecast_cards();
   grid_log_memory("end");
   ESP_LOGI("sensors", "Phase 2: done (%lu ms)", esphome::millis());
@@ -1755,51 +1857,127 @@ inline void grid_phase2(
 
 // ── Phase 3: Temperature + presence/media subscriptions ───────────────
 
+inline std::string clock_bar_temperature_trim(const std::string &value) {
+  size_t start = 0;
+  while (start < value.size() && std::isspace((unsigned char) value[start])) start++;
+  size_t end = value.size();
+  while (end > start && std::isspace((unsigned char) value[end - 1])) end--;
+  return value.substr(start, end - start);
+}
+
+inline std::vector<std::string> parse_clock_bar_temperature_entities(const std::string &value) {
+  std::vector<std::string> out;
+  std::string current;
+  for (char ch : value) {
+    if (ch == '|' || ch == ',' || ch == '\n') {
+      std::string entity = clock_bar_temperature_trim(current);
+      if (!entity.empty() && std::find(out.begin(), out.end(), entity) == out.end()) out.push_back(entity);
+      current.clear();
+      if (out.size() >= 6) return out;
+    } else {
+      current.push_back(ch);
+    }
+  }
+  std::string entity = clock_bar_temperature_trim(current);
+  if (!entity.empty() && std::find(out.begin(), out.end(), entity) == out.end()) out.push_back(entity);
+  if (out.size() > 6) out.resize(6);
+  return out;
+}
+
+inline uint32_t &clock_bar_temperature_subscription_generation() {
+  static uint32_t generation = 0;
+  return generation;
+}
+
+inline bool configure_clock_bar_temperature_entities(
+    const std::string &temperature_entities,
+    lv_obj_t **temperature_labels,
+    size_t temperature_label_count,
+    lv_obj_t *main_page_obj,
+    std::function<bool()> clock_bar_visible_callback = nullptr) {
+  set_clock_bar_temperature_labels(temperature_labels, temperature_label_count);
+
+  std::vector<std::string> clock_bar_entities =
+      parse_clock_bar_temperature_entities(temperature_entities);
+  uint32_t generation = ++clock_bar_temperature_subscription_generation();
+
+  if (clock_bar_entities.empty()) {
+    set_clock_bar_temperature_value_count(0);
+    return false;
+  }
+
+  set_clock_bar_temperature_value_count(clock_bar_entities.size());
+  refresh_clock_bar_temperature_label_values(
+      main_page_obj,
+      clock_bar_visible_callback ? clock_bar_visible_callback() : true,
+      false, false, NAN, NAN);
+
+  for (size_t i = 0; i < clock_bar_entities.size(); i++) {
+    ha_subscribe_state(
+      clock_bar_entities[i],
+      std::function<void(esphome::StringRef)>(
+        [i, generation, main_page_obj, clock_bar_visible_callback](esphome::StringRef state) {
+          if (generation != clock_bar_temperature_subscription_generation()) return;
+          float val = 0.0f;
+          if (parse_float_ref(state, val)) {
+            std::vector<float> &values = clock_bar_temperature_values();
+            if (i < values.size()) values[i] = val;
+            refresh_clock_bar_temperature_label_values(
+                main_page_obj,
+                clock_bar_visible_callback ? clock_bar_visible_callback() : true,
+                false, false, NAN, NAN);
+          }
+        })
+    );
+  }
+
+  return true;
+}
+
 inline void grid_phase3(
     bool indoor_on, bool outdoor_on,
     const std::string &indoor_entity, const std::string &outdoor_entity,
+    const std::string &temperature_entities,
     float *indoor_temp_ptr, float *outdoor_temp_ptr,
-    lv_obj_t *temp_label,
+    lv_obj_t **temperature_labels,
+    size_t temperature_label_count,
+    lv_obj_t *main_page_obj,
     const std::string &presence_entity,
     bool *presence_detected_ptr,
     const std::string &media_player_entity,
     bool *media_player_playing_ptr,
+    std::function<bool()> clock_bar_visible_callback,
     std::function<void()> wake_callback,
     std::function<void()> sleep_callback) {
   ESP_LOGI("sensors", "Phase 3: temp/presence/media subscriptions start (%lu ms)", esphome::millis());
-
-  if (indoor_on && outdoor_on) {
-    char buf[32];
-    format_clock_bar_temperature_pair(buf, sizeof(buf), "-", "-");
-    lv_label_set_text(temp_label, buf);
-  } else if (indoor_on || outdoor_on) {
-    char buf[16];
-    format_clock_bar_temperature_single(buf, sizeof(buf), "-");
-    lv_label_set_text(temp_label, buf);
+  bool has_clock_bar_entities = configure_clock_bar_temperature_entities(
+      temperature_entities, temperature_labels, temperature_label_count,
+      main_page_obj, clock_bar_visible_callback);
+  if (has_clock_bar_entities) {
+    indoor_on = false;
+    outdoor_on = false;
   }
+
+  refresh_clock_bar_temperature_label_values(
+      main_page_obj,
+      clock_bar_visible_callback ? clock_bar_visible_callback() : true,
+      indoor_on, outdoor_on,
+      indoor_temp_ptr ? *indoor_temp_ptr : NAN,
+      outdoor_temp_ptr ? *outdoor_temp_ptr : NAN);
 
   if (indoor_on && !indoor_entity.empty()) {
     ha_subscribe_state(
       indoor_entity,
       std::function<void(esphome::StringRef)>(
-        [indoor_temp_ptr, outdoor_temp_ptr, temp_label](esphome::StringRef state) {
+        [indoor_on, outdoor_on, indoor_temp_ptr, outdoor_temp_ptr,
+         main_page_obj, clock_bar_visible_callback](esphome::StringRef state) {
           float val = 0.0f;
           if (parse_float_ref(state, val)) {
             *indoor_temp_ptr = val;
-            float outdoor = *outdoor_temp_ptr;
-            char buf[40];
-            if (std::isnan(outdoor)) {
-              char indoor_buf[16];
-              format_fixed_decimal(indoor_buf, sizeof(indoor_buf), val, 0);
-              format_clock_bar_temperature_single(buf, sizeof(buf), indoor_buf);
-            } else {
-              char outdoor_buf[16];
-              char indoor_buf[16];
-              format_fixed_decimal(outdoor_buf, sizeof(outdoor_buf), outdoor, 0);
-              format_fixed_decimal(indoor_buf, sizeof(indoor_buf), val, 0);
-              format_clock_bar_temperature_pair(buf, sizeof(buf), outdoor_buf, indoor_buf);
-            }
-            lv_label_set_text(temp_label, buf);
+            refresh_clock_bar_temperature_label_values(
+                main_page_obj,
+                clock_bar_visible_callback ? clock_bar_visible_callback() : true,
+                indoor_on, outdoor_on, *indoor_temp_ptr, *outdoor_temp_ptr);
           }
         })
     );
@@ -1809,24 +1987,15 @@ inline void grid_phase3(
     ha_subscribe_state(
       outdoor_entity,
       std::function<void(esphome::StringRef)>(
-        [indoor_temp_ptr, outdoor_temp_ptr, temp_label](esphome::StringRef state) {
+        [indoor_on, outdoor_on, indoor_temp_ptr, outdoor_temp_ptr,
+         main_page_obj, clock_bar_visible_callback](esphome::StringRef state) {
           float val = 0.0f;
           if (parse_float_ref(state, val)) {
             *outdoor_temp_ptr = val;
-            float indoor = *indoor_temp_ptr;
-            char buf[40];
-            if (std::isnan(indoor)) {
-              char outdoor_buf[16];
-              format_fixed_decimal(outdoor_buf, sizeof(outdoor_buf), val, 0);
-              format_clock_bar_temperature_single(buf, sizeof(buf), outdoor_buf);
-            } else {
-              char outdoor_buf[16];
-              char indoor_buf[16];
-              format_fixed_decimal(outdoor_buf, sizeof(outdoor_buf), val, 0);
-              format_fixed_decimal(indoor_buf, sizeof(indoor_buf), indoor, 0);
-              format_clock_bar_temperature_pair(buf, sizeof(buf), outdoor_buf, indoor_buf);
-            }
-            lv_label_set_text(temp_label, buf);
+            refresh_clock_bar_temperature_label_values(
+                main_page_obj,
+                clock_bar_visible_callback ? clock_bar_visible_callback() : true,
+                indoor_on, outdoor_on, *indoor_temp_ptr, *outdoor_temp_ptr);
           }
         })
     );

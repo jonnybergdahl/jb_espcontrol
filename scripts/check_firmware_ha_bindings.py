@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -23,6 +24,25 @@ CONNECTIVITY_PATHS = (
     ROOT / "common" / "addon" / "connectivity_deployed.yaml",
     ROOT / "common" / "addon" / "connectivity_ethernet.yaml",
 )
+
+
+def package_api_navigate_enabled(package_path: Path, root: Path) -> bool:
+    manifest_path = root / "devices" / "manifest.json"
+    if not manifest_path.exists():
+        return True
+    try:
+        slug = package_path.relative_to(root / "devices").parts[0]
+    except (ValueError, IndexError):
+        return True
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return True
+    device = manifest.get("devices", {}).get(slug, {})
+    package = device.get("firmware", {}).get("package", {})
+    return bool(package.get("apiNavigateAction", True))
+
+
 HA_BOUNDARY_ALLOWLIST = {
     "button_grid_ha.h",
 }
@@ -30,6 +50,7 @@ DIRECT_HA_PATTERNS = (
     (re.compile(r"\bglobal_api_server\b"), "access Home Assistant API through button_grid_ha.h helpers"),
     (re.compile(r"->send_homeassistant_action\s*\("), "send Home Assistant actions through button_grid_ha.h helpers"),
     (re.compile(r"->subscribe_home_assistant_state\s*\("), "subscribe to Home Assistant state through button_grid_ha.h helpers"),
+    (re.compile(r"->get_home_assistant_state\s*\("), "get Home Assistant state through button_grid_ha.h helpers"),
     (re.compile(r"->register_action_response_callback\s*\("), "register action callbacks through button_grid_ha.h helpers"),
 )
 STATE_HELPER_PATTERN = re.compile(
@@ -81,6 +102,19 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
         errors.append(f"{rel}: missing ha_subscribe_state helper")
     elif "heap_available" in state_helper.group("body"):
         errors.append(f"{rel}: keep core HA state subscriptions off the low-heap guard")
+    elif "ha_note_state_retry_result" not in state_helper.group("body"):
+        errors.append(f"{rel}: track unavailable subscribed states for reconnect retries")
+
+    if (
+        "ha_retry_unavailable_states" not in text
+        or "ha_unavailable_state_retry_refs" not in text
+        or "HA_UNAVAILABLE_STATE_RETRY_INTERVAL_MS" not in text
+    ):
+        errors.append(f"{rel}: retry unavailable subscribed states after Home Assistant finishes startup")
+    if "ha_entity_state_unavailable_ref(entity_id, state)" not in text:
+        errors.append(f"{rel}: use entity-aware unavailable checks for subscribed state retries")
+    if "ha_reset_unavailable_state_retries" not in text:
+        errors.append(f"{rel}: expose a helper to clear stale unavailable state retries")
 
     attribute_helper = ATTRIBUTE_HELPER_PATTERN.search(text)
     if not attribute_helper:
@@ -100,6 +134,38 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
     elif "ha_api_state_connected()" not in action_send_match.group("body"):
         errors.append(f"{rel}: send Home Assistant actions only after state subscription is ready")
 
+    return errors
+
+
+def firmware_unavailable_retry_errors(
+    firmware_dir: Path,
+    core_infra_path: Path,
+    root: Path,
+) -> list[str]:
+    config_path = firmware_dir / "button_grid_config.h"
+    errors: list[str] = []
+    if config_path.exists():
+        config_rel = config_path.relative_to(root)
+        config_text = config_path.read_text(encoding="utf-8")
+        bump_match = re.search(
+            r"inline\s+void\s+bump_ha_subscription_generation\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
+            config_text,
+            re.DOTALL,
+        )
+        if not bump_match or "ha_reset_unavailable_state_retries()" not in bump_match.group("body"):
+            errors.append(f"{config_rel}: clear stale unavailable state retries when subscriptions are rebuilt")
+
+    if core_infra_path.exists():
+        core_rel = core_infra_path.relative_to(root)
+        core_text = core_infra_path.read_text(encoding="utf-8")
+        if "ha_retry_unavailable_states" not in core_text:
+            errors.append(f"{core_rel}: retry unavailable HA states after reconnects and during maintenance")
+        interval_match = re.search(
+            r"(?ms)^interval:\n(?P<body>.*?)(?:^logger:|\Z)",
+            core_text,
+        )
+        if not interval_match or "ha_retry_unavailable_states();" not in interval_match.group("body"):
+            errors.append(f"{core_rel}: periodically retry unavailable HA states")
     return errors
 
 
@@ -191,6 +257,36 @@ def firmware_todo_disconnect_errors(firmware_dir: Path, core_infra_path: Path, r
     return errors
 
 
+def firmware_action_card_availability_errors(firmware_dir: Path, root: Path) -> list[str]:
+    path = firmware_dir / "button_grid_grid.h"
+    if not path.exists():
+        return []
+    rel = path.relative_to(root)
+    text = path.read_text(encoding="utf-8")
+    errors: list[str] = []
+
+    stateless_main_pattern = re.compile(
+        r"std::string\s+state_entity\s*=\s*action_card_state_entity\(p\);"
+        r"(?P<body>.*?)continue;",
+        re.DOTALL,
+    )
+    stateless_subpage_pattern = re.compile(
+        r"std::string\s+state_entity\s*=\s*action_card_state_entity\(sb_cfg\);"
+        r"(?P<body>.*?)ParsedCfg\s+\*ctx\s*=",
+        re.DOTALL,
+    )
+
+    for match in stateless_main_pattern.finditer(text):
+        body = match.group("body")
+        if "else" in body and "register_ha_control_availability(s.btn, s.btn)" in body:
+            errors.append(f"{rel}: keep stateless action cards tappable while Home Assistant availability is pending")
+    for match in stateless_subpage_pattern.finditer(text):
+        body = match.group("body")
+        if "else" in body and "register_ha_control_availability(sub_slot.btn, sub_slot.btn)" in body:
+            errors.append(f"{rel}: keep stateless subpage action cards tappable while Home Assistant availability is pending")
+    return errors
+
+
 def firmware_time_reconnect_errors(time_path: Path, root: Path) -> list[str]:
     if not time_path.exists():
         return []
@@ -226,12 +322,84 @@ def firmware_weather_request_errors(firmware_dir: Path, root: Path) -> list[str]
         errors.append(f"{rel}: wait for Home Assistant state subscription before automatic forecast requests")
     if "ha_cancel_action_response_callback(req.call_id" not in text:
         errors.append(f"{rel}: cancel forecast response callbacks when sends fail")
+    if (
+        'ha_cancel_action_response_callback(req.call_id, "send failed");' in body
+        and 'weather_forecast_schedule_retry(entity_id, day, "send failed");' not in body
+    ):
+        errors.append(f"{rel}: retry weather forecast sends that fail after callback registration")
     if "WEATHER_FORECAST_PENDING_MAX" not in text or "weather_forecast_track_pending" not in text:
         errors.append(f"{rel}: bound pending forecast response callbacks")
     if "weather_forecast_cancel_pending_requests" not in text:
         errors.append(f"{rel}: expose a helper to cancel pending forecast callbacks")
+    if (
+        "uint32_t generation = ha_subscription_generation();" not in body
+        or "generation != ha_subscription_generation()" not in body
+    ):
+        errors.append(f"{rel}: ignore stale forecast action responses after dashboard reconfiguration")
     if "WEATHER_FORECAST_RETRY_DELAY_MS" not in text or "weather_forecast_schedule_retry" not in text:
         errors.append(f"{rel}: retry failed weather forecast requests later")
+    if (
+        "response if response is defined and response is not none else none" not in text
+        or "'forecast' in response_data" not in text
+        or "response_data[entity] if response_data is not none and entity in response_data else none" not in text
+    ):
+        errors.append(f"{rel}: accept both direct and entity-keyed Home Assistant forecast response shapes")
+    if (
+        "today_date = now().date()" not in text
+        or "tomorrow_date = (now() + timedelta(days=1)).date()" not in text
+        or "as_datetime(item['datetime'])" not in text
+        or "as_local(item_dt).date()" not in text
+        or "as_datetime(item['date']).date()" not in text
+        or "ns.today if ns.today is not none else (forecasts[0]" not in text
+        or "ns.tomorrow if ns.tomorrow is not none else (forecasts[1]" not in text
+    ):
+        errors.append(f"{rel}: select today/tomorrow weather forecasts by date/datetime before falling back to list order")
+    if (
+        "entity_response['temperature_unit']" not in text
+        or "entity_response['unit_of_measurement']" not in text
+        or "entity_response['unit']" not in text
+        or "state_attr(entity, 'temperature_unit')" not in text
+        or "state_attr(entity, 'unit_of_measurement')" not in text
+    ):
+        errors.append(f"{rel}: preserve forecast temperature units from response data or weather entity attributes")
+    if (
+        "native_temperature" not in text
+        or "native_templow" not in text
+        or "native_temperature_unit" not in text
+    ):
+        errors.append(f"{rel}: accept native Home Assistant forecast temperature fields and units")
+    if (
+        "max_temperature" not in text
+        or "temperature_max" not in text
+        or "max_temp" not in text
+        or "min_temperature" not in text
+        or "temperature_min" not in text
+        or "min_temp" not in text
+    ):
+        errors.append(f"{rel}: accept max/min weather forecast temperature field aliases")
+    if (
+        "item_unit" not in text
+        or "today['temperature_unit']" not in text
+        or "today['unit_of_measurement']" not in text
+        or "today['unit']" not in text
+        or "tomorrow['native_temperature_unit']" not in text
+        or "tomorrow['unit_of_measurement']" not in text
+        or "tomorrow['unit']" not in text
+    ):
+        errors.append(f"{rel}: preserve forecast temperature units from individual forecast items")
+    if "parse_weather_forecast_temp" in text and "std::isfinite(parsed)" not in text:
+        errors.append(f"{rel}: reject non-finite weather forecast temperatures before rendering")
+    if (
+        "No usable forecast temperatures" in body
+        and 'weather_forecast_schedule_retry(entity_id, day, "no usable forecast temperatures");' not in body
+    ):
+        errors.append(f"{rel}: retry weather forecasts when Home Assistant returns no usable temperatures")
+    if (
+        "weather_forecast_error_is_timeout" not in text
+        or 'find("timed out")' not in text
+        or "apply_weather_forecast_actions_required_for_entity" not in body
+    ):
+        errors.append(f"{rel}: detect Home Assistant forecast timeout errors robustly")
     return errors
 
 
@@ -303,6 +471,41 @@ def firmware_cover_request_errors(firmware_dir: Path, core_infra_path: Path, roo
     return errors
 
 
+def firmware_climate_step_errors(firmware_dir: Path, root: Path) -> list[str]:
+    path = firmware_dir / "button_grid_climate.h"
+    if not path.exists():
+        return []
+    rel = path.relative_to(root)
+    text = path.read_text(encoding="utf-8")
+    errors: list[str] = []
+
+    helper = re.search(
+        r"inline\s+int\s+climate_effective_step_tenths\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
+        text,
+        re.DOTALL,
+    )
+    if not helper:
+        errors.append(f"{rel}: keep climate temperature changes at a display-appropriate minimum")
+    else:
+        body = helper.group("body")
+        if (
+            "CLIMATE_DEFAULT_STEP_TENTHS" not in body
+            or "CLIMATE_WHOLE_NUMBER_STEP_TENTHS" not in body
+            or "ctx->precision <= 0" not in body
+            or "ctx->step_tenths > minimum" not in body
+        ):
+            errors.append(f"{rel}: keep climate temperature changes at a display-appropriate minimum")
+    if "int step = climate_effective_step_tenths(ctx);" not in text:
+        errors.append(f"{rel}: round climate targets using the display-appropriate minimum step")
+    if "int base = ctx->precision <= 0 ? 0 : ctx->min_tenths;" not in text:
+        errors.append(f"{rel}: round whole-number climate targets to whole-degree boundaries")
+    if "climate_selected_target(ui.active) - ui.active->step_tenths" in text:
+        errors.append(f"{rel}: use the display-appropriate minimum step for the climate minus button")
+    if "climate_selected_target(ui.active) + ui.active->step_tenths" in text:
+        errors.append(f"{rel}: use the display-appropriate minimum step for the climate plus button")
+    return errors
+
+
 def firmware_s3_api_errors(
     device_path: Path,
     s3_packages_path: Path,
@@ -353,6 +556,8 @@ def firmware_s3_api_errors(
     for package_path in package_paths:
         if package_path == s3_packages_path or not package_path.exists():
             continue
+        if not package_api_navigate_enabled(package_path, root):
+            continue
         package_rel = package_path.relative_to(root)
         package_text = package_path.read_text(encoding="utf-8")
         if "api_navigate" not in package_text or "api_navigate.yaml" not in package_text:
@@ -391,11 +596,14 @@ def run_scan() -> int:
     errors.extend(firmware_ha_boundary_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_todo_request_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_todo_disconnect_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
+    errors.extend(firmware_action_card_availability_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_time_reconnect_errors(TIME_ADDON_PATH, ROOT))
     errors.extend(firmware_weather_request_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_weather_disconnect_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_weather_reconnect_errors(CORE_INFRA_PATH, ROOT))
+    errors.extend(firmware_unavailable_retry_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_cover_request_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
+    errors.extend(firmware_climate_step_errors(FIRMWARE_DIR, ROOT))
     errors.extend(
         firmware_s3_api_errors(
             S3_DEVICE_PATH,
@@ -477,6 +685,20 @@ def expect_todo_disconnect_errors(
         core_path.write_text(core_text, encoding="utf-8")
 
         errors = firmware_todo_disconnect_errors(firmware_dir, core_path, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_action_card_availability_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        firmware_dir.mkdir(parents=True)
+        (firmware_dir / "button_grid_grid.h").write_text(text, encoding="utf-8")
+
+        errors = firmware_action_card_availability_errors(firmware_dir, root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -586,6 +808,20 @@ def expect_cover_request_errors(
             assert not errors, f"{name}: expected no errors, got {errors!r}"
 
 
+def expect_climate_step_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        firmware_dir.mkdir(parents=True)
+        (firmware_dir / "button_grid_climate.h").write_text(text, encoding="utf-8")
+
+        errors = firmware_climate_step_errors(firmware_dir, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
 def expect_s3_api_errors(
     name: str,
     text: str,
@@ -652,6 +888,11 @@ def run_self_test() -> int:
         "direct state subscription",
         {"button_grid_media.h": "api->subscribe_home_assistant_state(entity, {}, cb);\n"},
         ("subscribe to Home Assistant state through button_grid_ha.h helpers",),
+    )
+    expect_errors(
+        "direct state get",
+        {"button_grid_media.h": "api->get_home_assistant_state(entity, {}, cb);\n"},
+        ("get Home Assistant state through button_grid_ha.h helpers",),
     )
     expect_errors(
         "direct callback registration",
@@ -1029,6 +1270,43 @@ def run_self_test() -> int:
         "      - lambda: todo_retry_waiting_modal();\n",
         ("keep todo cards tappable",),
     )
+    expect_action_card_availability_errors(
+        "stateless main action registered for availability",
+        "if (p.type == \"action\") {\n"
+        "  std::string state_entity = action_card_state_entity(p);\n"
+        "  if (!state_entity.empty()) {\n"
+        "    subscribe_action_card_display_state(ctx, state_entity);\n"
+        "  } else {\n"
+        "    register_ha_control_availability(s.btn, s.btn);\n"
+        "  }\n"
+        "  continue;\n"
+        "}\n",
+        ("keep stateless action cards tappable",),
+    )
+    expect_action_card_availability_errors(
+        "stateless subpage action registered for availability",
+        "if (sb_cfg.type == \"action\") {\n"
+        "  std::string state_entity = action_card_state_entity(sb_cfg);\n"
+        "  if (!state_entity.empty()) {\n"
+        "    subscribe_action_card_display_state(action_ctx, state_entity);\n"
+        "  } else {\n"
+        "    register_ha_control_availability(sub_slot.btn, sub_slot.btn);\n"
+        "  }\n"
+        "  ParsedCfg *ctx = new ParsedCfg(sb_cfg);\n"
+        "}\n",
+        ("keep stateless subpage action cards tappable",),
+    )
+    expect_action_card_availability_errors(
+        "stateful action only subscribes display state",
+        "if (p.type == \"action\") {\n"
+        "  std::string state_entity = action_card_state_entity(p);\n"
+        "  if (!state_entity.empty()) {\n"
+        "    subscribe_action_card_display_state(ctx, state_entity);\n"
+        "  }\n"
+        "  continue;\n"
+        "}\n",
+        (),
+    )
     expect_time_reconnect_errors(
         "home assistant time sync runs on raw api connect",
         "api:\n"
@@ -1080,6 +1358,41 @@ def run_self_test() -> int:
         ("cancel forecast response callbacks",),
     )
     expect_weather_request_errors(
+        "weather send failure missing retry",
+        "inline void request_weather_forecast_entity() {\n"
+        "  constexpr int WEATHER_FORECAST_PENDING_MAX = 8;\n"
+        "  constexpr uint32_t WEATHER_FORECAST_RETRY_DELAY_MS = 300000;\n"
+        "  weather_forecast_track_pending(req.call_id);\n"
+        "  weather_forecast_cancel_pending_requests();\n"
+        "  weather_forecast_schedule_retry(entity_id, day, \"setup failed\");\n"
+        "  if (!ha_api_state_connected()) return;\n"
+        "  ha_register_action_response_callback(req.call_id, cb);\n"
+        "  if (!ha_action_send(req)) {\n"
+        "    weather_forecast_clear_pending(req.call_id);\n"
+        "    ha_cancel_action_response_callback(req.call_id, \"send failed\");\n"
+        "    weather_forecast_send_next_queued();\n"
+        "  }\n"
+        "}\n",
+        ("retry weather forecast sends that fail after callback registration",),
+    )
+    expect_weather_request_errors(
+        "weather payload without temperatures missing retry",
+        "inline void request_weather_forecast_entity() {\n"
+        "  constexpr int WEATHER_FORECAST_PENDING_MAX = 8;\n"
+        "  constexpr uint32_t WEATHER_FORECAST_RETRY_DELAY_MS = 300000;\n"
+        "  weather_forecast_track_pending(req.call_id);\n"
+        "  weather_forecast_cancel_pending_requests();\n"
+        "  weather_forecast_schedule_retry(entity_id, day, \"setup failed\");\n"
+        "  if (!ha_api_state_connected()) return;\n"
+        "  ha_register_action_response_callback(req.call_id, cb);\n"
+        "  bool valid = false;\n"
+        "  if (!valid) {\n"
+        "    ESP_LOGW(\"weather_forecast\", \"No usable forecast temperatures for %s\", entity_id.c_str());\n"
+        "  }\n"
+        "}\n",
+        ("retry weather forecasts when Home Assistant returns no usable temperatures",),
+    )
+    expect_weather_request_errors(
         "unbounded weather callbacks",
         "inline void request_weather_forecast_entity() {\n"
         "  constexpr uint32_t WEATHER_FORECAST_RETRY_DELAY_MS = 300000;\n"
@@ -1102,6 +1415,16 @@ def run_self_test() -> int:
         "  ha_action_send(req);\n"
         "}\n",
         ("retry failed weather forecast requests later",),
+    )
+    expect_weather_request_errors(
+        "missing robust weather timeout detection",
+        "inline void request_weather_forecast_entity() {\n"
+        "  if (!weather_forecast_actions_ready()) return;\n"
+        "  weather_forecast_track_pending(req.call_id);\n"
+        "  weather_forecast_cancel_pending_requests();\n"
+        "  weather_forecast_schedule_retry(entity_id, day, \"failed\");\n"
+        "}\n",
+        ("detect Home Assistant forecast timeout errors robustly",),
     )
     expect_weather_disconnect_errors(
         "missing weather disconnect cleanup",
@@ -1161,6 +1484,48 @@ def run_self_test() -> int:
         "}\n",
         "api:\n  on_client_connected:\n    - lambda: refresh_weather_forecast_cards();\n",
         ("cancel pending cover stop callbacks when the HA API disconnects",),
+    )
+    expect_climate_step_errors(
+        "climate ignores whole-number display step",
+        "constexpr int CLIMATE_DEFAULT_STEP_TENTHS = 5;\n"
+        "inline int climate_round_to_step(ClimateControlCtx *ctx, int value) {\n"
+        "  int step = ctx->step_tenths;\n"
+        "  int base = ctx->min_tenths;\n"
+        "  return value;\n"
+        "}\n"
+        "inline void climate_control_open_modal(ClimateControlCtx *ctx) {\n"
+        "  climate_selected_target(ui.active) - ui.active->step_tenths;\n"
+        "  climate_selected_target(ui.active) + ui.active->step_tenths;\n"
+        "}\n",
+        (
+            "keep climate temperature changes at a display-appropriate minimum",
+            "round climate targets using the display-appropriate minimum step",
+            "round whole-number climate targets to whole-degree boundaries",
+            "use the display-appropriate minimum step for the climate minus button",
+            "use the display-appropriate minimum step for the climate plus button",
+        ),
+    )
+    expect_climate_step_errors(
+        "climate enforces display-appropriate minimum step",
+        "constexpr int CLIMATE_DEFAULT_STEP_TENTHS = 5;\n"
+        "constexpr int CLIMATE_WHOLE_NUMBER_STEP_TENTHS = 10;\n"
+        "inline int climate_effective_step_tenths(ClimateControlCtx *ctx) {\n"
+        "  if (!ctx) return CLIMATE_DEFAULT_STEP_TENTHS;\n"
+        "  int minimum = ctx->precision <= 0 ? CLIMATE_WHOLE_NUMBER_STEP_TENTHS : CLIMATE_DEFAULT_STEP_TENTHS;\n"
+        "  if (ctx->step_tenths > minimum && ctx->step_tenths <= 100)\n"
+        "    return ctx->step_tenths;\n"
+        "  return minimum;\n"
+        "}\n"
+        "inline int climate_round_to_step(ClimateControlCtx *ctx, int value) {\n"
+        "  int step = climate_effective_step_tenths(ctx);\n"
+        "  int base = ctx->precision <= 0 ? 0 : ctx->min_tenths;\n"
+        "  return value + step;\n"
+        "}\n"
+        "inline void climate_control_open_modal(ClimateControlCtx *ctx) {\n"
+        "  climate_selected_target(ui.active) - climate_effective_step_tenths(ui.active);\n"
+        "  climate_selected_target(ui.active) + climate_effective_step_tenths(ui.active);\n"
+        "}\n",
+        (),
     )
     expect_s3_api_errors(
         "low S3 API queue",

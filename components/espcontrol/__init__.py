@@ -12,11 +12,18 @@ import os
 
 CODEOWNERS = ["@jtenniswood"]
 
-CONFIG_SCHEMA = cv.Schema({})
+CONF_ACTION_RESPONSES = "action_responses"
+
+CONFIG_SCHEMA = cv.Schema(
+    {
+        cv.Optional(CONF_ACTION_RESPONSES, default=True): cv.boolean,
+    }
+)
 
 
 async def to_code(config):
     comp_dir = os.path.dirname(os.path.abspath(__file__))
     cg.add_build_flag(f"-I{comp_dir}")
-    cg.add_define("USE_API_HOMEASSISTANT_ACTION_RESPONSES")
-    cg.add_define("USE_API_HOMEASSISTANT_ACTION_RESPONSES_JSON")
+    if config[CONF_ACTION_RESPONSES]:
+        cg.add_define("USE_API_HOMEASSISTANT_ACTION_RESPONSES")
+        cg.add_define("USE_API_HOMEASSISTANT_ACTION_RESPONSES_JSON")

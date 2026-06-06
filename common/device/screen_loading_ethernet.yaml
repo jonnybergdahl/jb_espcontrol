@@ -49,7 +49,7 @@ lvgl:
                   id: loading_status_label
                   text: "Booting"
                   text_font: $setup_body_font_id
-                  text_color: 0x888888
+                  text_color: 0xB0B0B0
                   width: $content_width
                   text_align: center
               # Hidden slider ensures LVGL compiles lv_slider for dynamic use
@@ -71,11 +71,8 @@ esphome:
     - priority: -200
       then:
         - lvgl.resume:
+        - script.execute: clock_bar_hide
         - lvgl.page.show: loading_page
-        - lambda: |-
-            lv_obj_add_flag(id(temperatures), LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(id(display_time), LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(id(network_status_button), LV_OBJ_FLAG_HIDDEN);
         - delay: 100ms
         - if:
             condition:
@@ -101,5 +98,6 @@ esphome:
                 return ethernet::global_eth_component == nullptr ||
                        !ethernet::global_eth_component->is_connected();
             then:
+              - script.execute: clock_bar_hide
               - lvgl.page.show: ethernet_setup_page
               - script.execute: setup_screen_dim

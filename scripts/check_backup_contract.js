@@ -92,6 +92,21 @@ assert.deepStrictEqual(plain(v2.source), { device: "panel-a", slots: 3 }, "expor
 assert.strictEqual(v2.button_order, "1,2d", "exports legacy-compatible button_order");
 assert(Array.isArray(v2.buttons), "exports legacy-compatible buttons array");
 assert.strictEqual(typeof v2.subpages["1"], "string", "exports legacy-compatible subpage strings");
+assert.deepStrictEqual(plain(v2.subpage_objects["1"]), {
+  order: ["1", "B"],
+  back_label: "Back",
+  buttons: [{
+    entity: "scene.movie",
+    label: "Movie",
+    icon: "Flash",
+    icon_on: "Auto",
+    sensor: "scene.turn_on",
+    unit: "",
+    type: "action",
+    precision: "",
+    options: "",
+  }],
+}, "exports readable structured subpage objects");
 assert.strictEqual(v2.buttons[1].type, "weather", "exports canonical card types");
 assert.strictEqual(v2.buttons[1].precision, "tomorrow", "exports migrated card details");
 
@@ -130,6 +145,31 @@ assert(
   normalizedV1.subpages["1"].includes("play_pause") || normalizedV1.subpages["1"].includes("M,"),
   "legacy subpage config is normalized"
 );
+assert.strictEqual(
+  normalizedV1.subpage_objects["1"].buttons[0].sensor,
+  "play_pause",
+  "legacy subpage imports also gain readable structured objects"
+);
+
+const structuredOverride = hooks.normalizeBackupConfig({
+  version: 2,
+  format: hooks.BACKUP_FORMAT,
+  device: "panel-a",
+  button_order: "1",
+  buttons: [{ entity: "light.kitchen", label: "Kitchen" }],
+  subpages: {
+    1: "1,B|scene.old:Old:Flash::scene.turn_on::action",
+  },
+  subpage_objects: {
+    1: {
+      order: ["1", "B"],
+      back_label: "Back",
+      buttons: [{ entity: "scene.new", label: "New", icon: "Flash", sensor: "scene.turn_on", type: "action" }],
+    },
+  },
+});
+assert(structuredOverride.subpages["1"].includes("scene.new"), "structured subpage object overrides stale string subpage");
+assert(!structuredOverride.subpages["1"].includes("scene.old"), "stale string subpage is ignored when structured object exists");
 
 const sameDevicePlan = hooks.planBackupImport(v2, { device: "panel-a", slots: 3 });
 assert.deepStrictEqual(plain(sameDevicePlan.warnings), [], "same-device import has no warnings");
@@ -157,6 +197,31 @@ assert.deepStrictEqual(buttonShape(crossDevicePlan.buttons[1]), buttonShape({
   icon_on: "Lightbulb",
 }), "legacy-v1 backup cross-device import fills remaining target slots in order");
 assert(crossDevicePlan.subpages["1"], "legacy-v1 backup cross-device import remaps subpages to the new slot");
+
+const structuredCrossDevicePlan = hooks.planBackupImport({
+  version: 2,
+  format: hooks.BACKUP_FORMAT,
+  device: "panel-a",
+  button_order: "2,1,3",
+  buttons: [
+    { entity: "light.kitchen", label: "Kitchen" },
+    { entity: "light.living", label: "Living" },
+    { entity: "light.office", label: "Office" },
+  ],
+  subpage_objects: {
+    2: {
+      order: ["1", "B"],
+      back_label: "Back",
+      buttons: [{ entity: "scene.relax", label: "Relax", icon: "Flash", sensor: "scene.turn_on", type: "action" }],
+    },
+  },
+}, { device: "small-panel", slots: 2 });
+assert(structuredCrossDevicePlan.subpages["1"], "structured subpage cross-device import remaps subpage to new slot");
+assert.strictEqual(
+  structuredCrossDevicePlan.subpages["1"].buttons[0].label,
+  "Relax",
+  "structured subpage cross-device import keeps readable object content"
+);
 
 throwsBackupMessage(
   () => hooks.normalizeBackupConfig({ version: 999, buttons: [] }),

@@ -11,7 +11,7 @@ description:
 There are several ways:
 
 - **On the display itself** — when no cards are configured yet, the panel shows its address on screen.
-- **In your router** — look at the connected devices list (usually at `192.168.1.1` or similar). The panel will appear with its hostname.
+- **In your router** — look at the connected devices list in your router admin page. The panel will appear with its hostname.
 - **In Home Assistant** — go to **Settings > Devices & Services > ESPHome**, click on the device, and look for the IP address.
 
 ## The Web Page Looks Broken or Unstyled
@@ -62,10 +62,6 @@ See [Firmware Updates](/features/firmware-updates) for more details.
 ## What If the Icon I Need Isn't Listed?
 
 The panel includes hundreds of icons from the Material Design Icons set. If the one you need isn't there, [open an issue on GitHub](https://github.com/jtenniswood/espcontrol/issues) with the icon name (from [pictogrammers.com/library/mdi](https://pictogrammers.com/library/mdi/)) and what you'd use it for. We'll look into adding it.
-
-## What Card Types Are Available?
-
-The setup page currently includes Switch, Lights, Action, Webhook, Trigger, Sensor, Doors & Windows, Presence, Slider, Cover, Garage Door, Lock, Date & Time, Clock, World Clock, Weather, Media, Climate, Internal Switches, and Subpage cards.
 
 ## How Many Cards Can I Have?
 

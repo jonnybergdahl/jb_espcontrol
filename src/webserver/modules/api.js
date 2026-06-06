@@ -40,7 +40,7 @@ function entityStateItems(keys) {
 
 function entityStateItemsForSlots(keys) {
   var items = [];
-  for (var i = 1; i <= NUM_SLOTS; i++) {
+  for (var i = 1; i <= TOTAL_SLOTS; i++) {
     keys.forEach(function (key) {
       items.push([entityDef(key).domain, entityNameForSlot(key, i)]);
     });
@@ -129,8 +129,13 @@ function rememberConfiguredEntities() {
   }
   rememberEntityName(state.indoorEntity, "Indoor Temperature");
   rememberEntityName(state.outdoorEntity, "Outdoor Temperature");
+  clockBarTemperatureEntities().forEach(function (entityId, index) {
+    rememberEntityName(entityId, "Clock Bar Temperature " + (index + 1));
+  });
+  rememberEntityName(state.clockBarWeatherEntity, "Clock Bar Weather");
   rememberEntityName(state.presenceEntity, "Presence Sensor");
   rememberEntityName(state.mediaPlayerSleepPreventionEntity, "Media Player");
+  rememberEntityName(state.coverArtMediaPlayerEntity, "Cover Art Media Player");
 }
 
 function optionLabelForEntity(entityId) {
@@ -285,13 +290,13 @@ function hasRememberedPostPath(domain, name, objectIds) {
 
 function entityPostUrls(domain, name, objectIds, action) {
   var urls = [];
-  uniquePush(urls, "/" + domain + "/" + encodeURIComponent(name) + "/" + action);
   rememberedPostUrls(domain, name, objectIds || [], action).forEach(function (url) {
     uniquePush(urls, url);
   });
   (objectIds || []).forEach(function (objectId) {
     uniquePush(urls, "/" + domain + "/" + encodeURIComponent(objectId) + "/" + action);
   });
+  uniquePush(urls, "/" + domain + "/" + encodeURIComponent(name) + "/" + action);
   uniquePush(urls, "/" + domain + "/" + encodeURIComponent(esphomeObjectId(name)) + "/" + action);
   return urls;
 }
@@ -320,9 +325,33 @@ function post(url, fallbackUrl, errorMessage) {
   return _postQueue;
 }
 
+function postOptional(url) {
+  var urls = Array.isArray(url) ? url.slice() : [url];
+  _postQueue = _postQueue.then(function () {
+    var index = 0;
+    function tryNext() {
+      return fetch(urls[index], { method: "POST" }).then(function (r) {
+        if (r.ok || index >= urls.length - 1) return r;
+        index++;
+        return tryNext();
+      });
+    }
+    return tryNext().catch(function () {
+      setConfigLocked(true, "Reconnecting to device\u2026");
+      showBanner("Cannot reach device \u2014 is it connected?", "error");
+      setTimeout(connectEvents, 5000);
+    });
+  });
+  return _postQueue;
+}
+
 function postText(name, value) {
   var encodedValue = encodeURIComponent(value);
   return post(entityPostUrls("text", name, [], "set?value=" + encodedValue));
+}
+
+function postTextWithObjectIds(name, objectIds, value, errorMessage) {
+  return postWithObjectIds("text", name, objectIds, "set?value=" + encodeURIComponent(value), errorMessage);
 }
 
 function saveButtonConfig(slot) {
@@ -337,6 +366,20 @@ function subpageEntityKeys() {
   return keys.slice(0, count);
 }
 
+var SUBPAGE_RAW_CHUNK_FIELDS = ["main", "ext", "ext2", "ext3", "ext4", "ext5", "ext6", "ext7"];
+
+function subpageChunkShouldPost(slot, keys, chunks, index, previousPendingChunks) {
+  if (chunks[index] || index === 0) return true;
+  var chunkName = entityNameForSlot(keys[index], slot);
+  if (hasRememberedPostPath("text", chunkName, [])) return true;
+  var raw = state.subpageRaw[slot];
+  var rawField = SUBPAGE_RAW_CHUNK_FIELDS[index];
+  return !!(
+    (raw && rawField && raw[rawField]) ||
+    (previousPendingChunks && previousPendingChunks[index])
+  );
+}
+
 function saveSubpageEntity(slot) {
   var sp = state.subpages[slot];
   var full = sp ? serializeSubpageConfig(sp) : "";
@@ -346,11 +389,13 @@ function saveSubpageEntity(slot) {
     showBanner("Subpage is too large to save. Shorten labels or entity IDs.", "error");
     return;
   }
+  var previousPendingChunks = EspControlModel.splitSubpageConfigChunks(
+    state.subpageSavePending[slot] || "", keys.length, 255) || [];
   state.subpageSavePending[slot] = full;
   for (var ki = 0; ki < keys.length; ki++) {
     var chunkName = entityNameForSlot(keys[ki], slot);
     var chunk = chunks[ki] || "";
-    if (!chunk && ki > 0 && !hasRememberedPostPath("text", chunkName, [])) continue;
+    if (!subpageChunkShouldPost(slot, keys, chunks, ki, previousPendingChunks)) continue;
     postText(chunkName, chunk);
   }
 }
@@ -571,6 +616,45 @@ function postClockBar(on) {
   postSwitchWithObjectIds(entityName("screen_clock_bar"), entityObjectIds("screen_clock_bar"), on, CLOCK_BAR_UNAVAILABLE);
 }
 
+function postClockBarLayout(value) {
+  postTextWithObjectIds(
+    entityName("screen_clock_bar_layout"),
+    entityObjectIds("screen_clock_bar_layout"),
+    value,
+    CLOCK_BAR_UNAVAILABLE
+  );
+}
+
+function postClockBarTemperatureEntities(value) {
+  var name = entityName("clock_bar_temperature_entities");
+  var objectIds = entityObjectIds("clock_bar_temperature_entities");
+  return postOptional(entityPostUrls("text", name, objectIds, "set?value=" + encodeURIComponent(value)));
+}
+
+var CLOCK_BAR_TIME_UNAVAILABLE =
+  "Clock bar time setting is not available on this firmware. Update the device firmware, then reload this page.";
+
+function postClockBarTime(on) {
+  postSwitchWithObjectIds(
+    entityName("screen_clock_bar_time"),
+    entityObjectIds("screen_clock_bar_time"),
+    on,
+    CLOCK_BAR_TIME_UNAVAILABLE
+  );
+}
+
+var CLOCK_BAR_WEATHER_ICON_UNAVAILABLE =
+  "Clock bar weather icon setting is not available on this firmware. Update the device firmware, then reload this page.";
+
+function postClockBarWeatherIcon(on) {
+  postSwitchWithObjectIds(
+    entityName("screen_clock_bar_weather_icon"),
+    entityObjectIds("screen_clock_bar_weather_icon"),
+    on,
+    CLOCK_BAR_WEATHER_ICON_UNAVAILABLE
+  );
+}
+
 var NETWORK_STATUS_ICON_UNAVAILABLE =
   "Network status icon setting is not available on this firmware. Update the device firmware, then reload this page.";
 
@@ -750,7 +834,10 @@ function eventStreamEnabled() {
 }
 
 function cardStateEntities() {
-  return entityStateItems(ENTITY_CATALOG.groups.card)
+  var cardEntities = ENTITY_CATALOG.groups.card.filter(function (key) {
+    return key !== "screen_theme" || isEpaperPreview();
+  });
+  return entityStateItems(cardEntities)
     .concat(entityStateItemsForSlots(ENTITY_CATALOG.groups.card_slot));
 }
 

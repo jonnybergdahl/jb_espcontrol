@@ -1,5 +1,5 @@
 import type { CardConfig } from "../contracts/types";
-import { decodeConfigField, encodeConfigField } from "./card";
+import { cloneCardConfig, decodeConfigField, encodeConfigField } from "./card";
 import { applySpans, sizeFromToken, sizeToken, type SlotSizeMap } from "./grid";
 
 export interface BackOrderToken {
@@ -18,6 +18,12 @@ export interface ParsedSubpageConfig {
   backLabel: string;
 }
 
+export interface StructuredSubpageConfig {
+  order: string[];
+  back_label: string;
+  buttons: CardConfig[];
+}
+
 export interface SubpageGridSource {
   order?: readonly string[];
   grid?: readonly number[];
@@ -27,6 +33,15 @@ export interface SubpageGridSource {
 }
 
 const BACK_TOKENS = new Set(["B", "Bd", "Bw", "Bb", "Bt", "Bx"]);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function stringField(record: Record<string, unknown>, key: string, fallback = ""): string {
+  const value = record[key];
+  return value == null ? fallback : String(value || fallback);
+}
 
 export function isBackOrderToken(token: string | null | undefined): boolean {
   return BACK_TOKENS.has(String(token || ""));
@@ -152,6 +167,47 @@ export function parseRawSubpageConfig(
 ): ParsedSubpageConfig {
   if (value && value.charAt(0) === "~") return parseCompactSubpageConfig(value, typeFromCode);
   return parseLegacySubpageConfig(value);
+}
+
+export function structuredSubpageFromParsed(
+  subpage: ParsedSubpageConfig | null | undefined,
+): StructuredSubpageConfig {
+  return {
+    order: (subpage?.order || []).map((item) => parseBackOrderToken(item).token),
+    back_label: subpage?.backLabel || backLabelFromOrder(subpage?.order) || "Back",
+    buttons: (subpage?.buttons || []).map((button) => cloneCardConfig(button)),
+  };
+}
+
+export function parseStructuredSubpageConfig(value: unknown): ParsedSubpageConfig {
+  if (!isRecord(value)) return { order: [], buttons: [], backLabel: "Back" };
+
+  const orderValues = Array.isArray(value.order)
+    ? value.order.map((item) => String(item || ""))
+    : [];
+  const parsedOrder = parseSubpageOrder(orderValues.join(","));
+  const backLabel = stringField(value, "back_label", stringField(value, "backLabel", parsedOrder.backLabel));
+  const rawButtons = Array.isArray(value.buttons) ? value.buttons : [];
+  const buttons = rawButtons.map((button) => {
+    const record = isRecord(button) ? button : {};
+    return cloneCardConfig({
+      entity: stringField(record, "entity"),
+      label: stringField(record, "label"),
+      icon: stringField(record, "icon", "Auto"),
+      icon_on: stringField(record, "icon_on", "Auto"),
+      sensor: stringField(record, "sensor"),
+      unit: stringField(record, "unit"),
+      type: stringField(record, "type"),
+      precision: stringField(record, "precision"),
+      options: stringField(record, "options"),
+    });
+  });
+
+  return {
+    order: parsedOrder.order,
+    buttons,
+    backLabel: backLabel || "Back",
+  };
 }
 
 export function legacySubpageFieldsSafe(buttonFields: readonly (readonly string[])[]): boolean {

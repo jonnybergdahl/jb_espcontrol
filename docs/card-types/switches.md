@@ -59,5 +59,5 @@ Switch cards can also show an active display while the entity is active:
 When the entity is not active, the card goes back to its normal off icon and label.
 
 ::: info Requires Home Assistant actions
-Switch cards send Home Assistant actions from the panel. If tapping a card does nothing, check [Home Assistant Actions](/getting-started/home-assistant-actions).
+Switch cards send Home Assistant actions from the panel. If tapping a card does nothing, check [Enable Actions](/getting-started/home-assistant-actions).
 :::

@@ -3,12 +3,12 @@
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
 inline std::string media_status_text(const std::string &state) {
-  if (state == "playing") return "Playing";
-  if (state == "paused") return "Paused";
-  if (state == "idle") return "Idle";
-  if (state == "off") return "Off";
-  if (state == "unavailable") return "Unavailable";
-  if (state == "unknown" || state.empty()) return "Unknown";
+  if (state == "playing") return espcontrol_i18n(std::string("Playing"));
+  if (state == "paused") return espcontrol_i18n(std::string("Paused"));
+  if (state == "idle") return espcontrol_i18n(std::string("Idle"));
+  if (state == "off") return espcontrol_i18n(std::string("Off"));
+  if (state == "unavailable") return espcontrol_i18n(std::string("Unavailable"));
+  if (state == "unknown" || state.empty()) return espcontrol_i18n(std::string("Unknown"));
   return sentence_cap_text(state);
 }
 
@@ -164,7 +164,7 @@ inline void setup_media_action_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
   }
   if (text_lbl) {
     std::string label = media_play_pause_show_state(p)
-      ? std::string("Paused")
+      ? espcontrol_i18n(std::string("Paused"))
       : media_action_label(p, mode);
     lv_label_set_text(text_lbl, label.c_str());
     lv_obj_align(text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
@@ -320,7 +320,7 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
     }
     if (text_lbl) {
       lv_obj_clear_flag(text_lbl, LV_OBJ_FLAG_HIDDEN);
-      lv_label_set_text(text_lbl, media_position_show_state(p) ? "Paused" : media_action_label(p, mode).c_str());
+      lv_label_set_text(text_lbl, media_position_show_state(p) ? espcontrol_i18n("Paused") : media_action_label(p, mode).c_str());
       lv_obj_align(text_lbl, LV_ALIGN_BOTTOM_LEFT, pad, -pad);
       configure_button_label_wrap(text_lbl);
       lv_obj_move_foreground(text_lbl);
@@ -480,6 +480,7 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
 inline void subscribe_media_state(lv_obj_t *btn_ptr,
                                   lv_obj_t *status_lbl,
                                   const std::string &entity_id) {
+  register_ha_control_availability(btn_ptr, btn_ptr);
   ha_subscribe_state(
     entity_id,
     std::function<void(esphome::StringRef)>(
@@ -488,8 +489,7 @@ inline void subscribe_media_state(lv_obj_t *btn_ptr,
         bool unavailable = ha_state_unavailable_ref(state);
         apply_control_availability(btn_ptr, btn_ptr, !unavailable);
         bool playing = state_text == "playing";
-        if (playing) lv_obj_add_state(btn_ptr, LV_STATE_CHECKED);
-        else lv_obj_clear_state(btn_ptr, LV_STATE_CHECKED);
+        set_card_checked_state(btn_ptr, playing);
         if (status_lbl) {
           std::string label = media_status_text(state_text);
           lv_label_set_text(status_lbl, label.c_str());
@@ -570,6 +570,7 @@ inline MediaVolumeCtx *create_media_volume_context(lv_obj_t *btn,
 
 inline void subscribe_media_volume_state(MediaVolumeCtx *ctx) {
   if (!ctx || ctx->entity_id.empty()) return;
+  register_ha_control_availability(ctx->btn, ctx->btn);
   ha_subscribe_state(
     ctx->entity_id,
     std::function<void(esphome::StringRef)>(
@@ -609,6 +610,8 @@ inline void subscribe_media_slider_state(lv_obj_t *btn_ptr,
                                          const std::string &entity_id) {
   SliderCtx *ctx = (SliderCtx *)lv_obj_get_user_data(slider);
   if (!ctx) return;
+  register_ha_control_availability(
+    btn_ptr, ctx->interactive ? ctx->media_slider : nullptr, ctx->interactive);
 
   ha_subscribe_state(
     entity_id,

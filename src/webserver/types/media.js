@@ -367,7 +367,7 @@ registerButtonType("media", {
       };
     }
     if (mode === "position") {
-      var bgColor = (typeof state !== "undefined" && state.offColor) ? state.offColor : "313131";
+      var bgColor = (typeof state !== "undefined" && state.offColor) ? state.offColor : "CECECE";
       var progressColor = "444444";
       var positionLabel = b.precision === "state" ? "Paused" : label;
       var positionClass = "sp-sensor-preview sp-media-position-time" +
@@ -385,13 +385,13 @@ registerButtonType("media", {
     if (mode === "now_playing") {
       var progressBg = "";
       if (mediaNowPlayingProgressEnabled(b)) {
-        var nowBgColor = (typeof state !== "undefined" && state.offColor) ? state.offColor : "313131";
+        var nowBgColor = (typeof state !== "undefined" && state.offColor) ? state.offColor : "CECECE";
         progressBg =
           '<span class="sp-slider-preview" style="inset:-2px;background:#' + helpers.escHtml(nowBgColor) + '">' +
           '<span class="sp-slider-track"><span class="sp-slider-fill" style="width:50%;height:100%;background:#444444">' +
           '</span></span></span>';
       } else if (mediaNowPlayingPlayPauseEnabled(b)) {
-        var playBgColor = (typeof state !== "undefined" && state.offColor) ? state.offColor : "313131";
+        var playBgColor = (typeof state !== "undefined" && state.offColor) ? state.offColor : "CECECE";
         progressBg =
           '<span class="sp-slider-preview" style="inset:-2px;background:#' + helpers.escHtml(playBgColor) + '">' +
           '</span>';

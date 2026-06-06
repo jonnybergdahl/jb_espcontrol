@@ -34,6 +34,21 @@ function backupSerializeSubpages(subpages) {
   return out;
 }
 
+function backupSerializeSubpageObjects(subpages) {
+  var out = {};
+  subpages = subpages || {};
+  for (var key in subpages) {
+    var sp = subpages[key];
+    if (!sp) continue;
+    var hasButtons = sp.buttons && sp.buttons.length > 0;
+    var hasOrder = (sp.order && sp.order.length > 0) || (sp.grid && sp.grid.length > 0);
+    if (!hasButtons && !hasOrder) continue;
+    var parsed = parseSubpageConfig(serializeSubpageConfig(sp));
+    out[key] = EspControlModel.structuredSubpageFromParsed(parsed);
+  }
+  return out;
+}
+
 function backupSource(data, slots) {
   return EspControlModel.backupSource(data || {}, slots);
 }
@@ -44,6 +59,7 @@ function createBackupConfig(snapshot) {
   return EspControlModel.createBackupEnvelope(snapshot, {
     buttons: buttons,
     subpages: backupSerializeSubpages(snapshot.subpages),
+    subpage_objects: backupSerializeSubpageObjects(snapshot.subpages),
     button_order: snapshot.button_order != null
       ? String(snapshot.button_order)
       : backupSerializeGrid(snapshot.grid || [], snapshot.sizes || {}),
@@ -55,16 +71,29 @@ function normalizeBackupConfig(data) {
 
   var buttons = data.buttons.map(backupNormalizeButtonConfig);
   var subpages = {};
+  var subpageObjects = {};
+  if (data.subpage_objects && typeof data.subpage_objects === "object") {
+    for (var objectKey in data.subpage_objects) {
+      var objectParsed = EspControlModel.parseStructuredSubpageConfig(data.subpage_objects[objectKey]);
+      var objectSerialized = serializeSubpageConfig(objectParsed);
+      subpages[objectKey] = objectSerialized;
+      subpageObjects[objectKey] = EspControlModel.structuredSubpageFromParsed(parseSubpageConfig(objectSerialized));
+    }
+  }
   if (data.subpages && typeof data.subpages === "object") {
     for (var key in data.subpages) {
+      if (Object.prototype.hasOwnProperty.call(subpages, key)) continue;
       var parsed = parseSubpageConfig(String(data.subpages[key] || ""));
-      subpages[key] = serializeSubpageConfig(parsed);
+      var serialized = serializeSubpageConfig(parsed);
+      subpages[key] = serialized;
+      subpageObjects[key] = EspControlModel.structuredSubpageFromParsed(parseSubpageConfig(serialized));
     }
   }
 
   return EspControlModel.normalizeBackupEnvelope(data, {
     buttons: buttons,
     subpages: subpages,
+    subpage_objects: subpageObjects,
   });
 }
 

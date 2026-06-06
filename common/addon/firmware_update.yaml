@@ -70,6 +70,7 @@ script:
           lv_label_set_text(id(loading_status_title), "Installing update");
           lv_label_set_text(id(loading_status_label), "Preparing the screen\nDo not power off");
       - lvgl.resume:
+      - script.execute: clock_bar_hide
       - lvgl.page.show: loading_page
       - light.turn_on:
           id: display_backlight
@@ -88,6 +89,7 @@ script:
           lv_label_set_text(id(loading_status_title), "Installing update");
           lv_label_set_text(id(loading_status_label), "The screen may turn off\nDo not power off");
       - lvgl.resume:
+      - script.execute: clock_bar_hide
       - lvgl.page.show: loading_page
       - script.execute: backlight_force_display_off
       - script.wait: backlight_force_display_off
@@ -101,6 +103,7 @@ script:
           lv_label_set_text(id(loading_status_title), "Update complete");
           lv_label_set_text(id(loading_status_label), "Restarting display");
       - lvgl.resume:
+      - script.execute: clock_bar_hide
       - lvgl.page.show: loading_page
       - light.turn_on:
           id: display_backlight
@@ -111,6 +114,7 @@ script:
           id: firmware_update_complete_pending
           value: 'false'
       - lambda: 'global_preferences->sync();'
+      - script.execute: clock_bar_hide
       - lvgl.page.show: loading_page
 
   - id: show_update_failed
@@ -125,6 +129,7 @@ script:
           lv_label_set_text(id(loading_status_title), "Update failed");
           lv_label_set_text(id(loading_status_label), "Try installing the update again");
       - lvgl.resume:
+      - script.execute: clock_bar_hide
       - lvgl.page.show: loading_page
       - light.turn_on:
           id: display_backlight

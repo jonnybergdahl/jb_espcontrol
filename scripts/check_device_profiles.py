@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import device_matrix
@@ -15,6 +16,7 @@ WEB_OUTPUT_DIR = ROOT / "docs" / "public" / "webserver"
 DEVICE_CAPABILITIES_JSON = ROOT / "docs" / "public" / "device-profiles.json"
 DEVICE_DOCS_DIR = ROOT / "docs" / "generated" / "screens"
 COMPAT_FIXTURES = ROOT / "compatibility" / "fixtures" / "product_compatibility.json"
+BUTTON_GRID_CARDS = ROOT / "components" / "espcontrol" / "button_grid_cards.h"
 REQUIRED_SETUP_ICON_GLYPHS = {
     r'"\U000F012C"': "mdi-check",
     r'"\U000F0996"': "mdi-progress-clock",
@@ -52,6 +54,10 @@ def test_public_device_capabilities(profile_slugs: list[str]) -> None:
         assert f'{capability["grid"]["rows"]}-row x {capability["grid"]["cols"]}-column' in grid, (
             f"{stem}: grid snippet missing grid shape"
         )
+        if capability.get("subpages", True):
+            assert "[Subpage](/features/subpages)" in grid, f"{stem}: grid snippet missing subpage support"
+        else:
+            assert "Touch subpages are not available" in grid, f"{stem}: grid snippet missing no-subpage note"
         assert capability["screenSize"] in grid, f"{stem}: grid snippet missing screen size"
         assert capability["resolution"] in grid, f"{stem}: grid snippet missing resolution"
         assert capability["chipFamily"] in grid, f"{stem}: grid snippet missing chip family"
@@ -74,18 +80,245 @@ def test_generated_web(profile_slugs: list[str]) -> None:
 def test_generated_yaml(profiles: dict[str, dict]) -> None:
     for slug, profile in profiles.items():
         package_path = ROOT / "devices" / slug / "packages.yaml"
+        device_path = ROOT / "devices" / slug / "device" / "device.yaml"
         sensor_path = ROOT / "devices" / slug / "device" / "sensors.yaml"
         package = package_path.read_text(encoding="utf-8")
+        device_path.read_text(encoding="utf-8")
         sensors = sensor_path.read_text(encoding="utf-8")
         assert f'device_slug: "{slug}"' in package, f"{slug}: packages.yaml missing device slug"
         assert f'firmware_manifest_slug: "{slug}"' in package, f"{slug}: packages.yaml missing manifest slug"
         assert f"cfg.num_slots = {profile['slots']};" in sensors, f"{slug}: sensors.yaml missing slot count"
+        if profile["firmware"].get("display", {}).get("infoOnly"):
+            assert "cfg.info_only = true;" in sensors, f"{slug}: sensors.yaml missing info-only grid flag"
 
 
 def test_setup_icon_glyphs() -> None:
     glyphs = (ROOT / "common" / "assets" / "icon_glyphs.yaml").read_text(encoding="utf-8")
     for glyph, icon_name in REQUIRED_SETUP_ICON_GLYPHS.items():
         assert glyph in glyphs, f"shared icon font missing {icon_name} for OTA update screen"
+
+
+def test_weather_card_visual_matches_preview() -> None:
+    cards = BUTTON_GRID_CARDS.read_text(encoding="utf-8")
+    styles = (ROOT / "src" / "webserver" / "modules" / "styles.js").read_text(encoding="utf-8")
+    subpages = (ROOT / "components" / "espcontrol" / "button_grid_subpages.h").read_text(encoding="utf-8")
+    config = (ROOT / "components" / "espcontrol" / "button_grid_config.h").read_text(encoding="utf-8")
+    assert ".sp-type-badge{display:none}" in styles, "web preview type badges should remain visually hidden"
+    assert "set_weather_card_badge" not in cards, (
+        "device weather cards should not show the hidden web preview type badge"
+    )
+    assert 'set_weather_card_badge(s, "Weather Cloudy")' not in cards, (
+        "current weather device card should not render a visible weather badge"
+    )
+    assert 'lv_label_set_text(s.text_lbl, espcontrol_i18n("Cloudy"))' in cards, (
+        "current weather device card should render the same label as the web preview"
+    )
+    assert 'set_weather_card_badge(s, "Weather Partly Cloudy")' not in cards, (
+        "forecast weather device card should not render a visible forecast badge"
+    )
+    assert '"HA Actions"' not in config, (
+        "forecast weather errors should keep the configured/default label like the web preview"
+    )
+    assert 'lv_label_set_text(s.unit_lbl, display_temperature_unit_symbol())' in cards, (
+        "forecast weather placeholder should show the configured unit like the web preview"
+    )
+    assert 'lv_label_set_text(ref.unit_lbl, normalized_unit.c_str())' in config, (
+        "forecast weather unavailable state should keep showing the configured unit"
+    )
+    grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(encoding="utf-8")
+    setup_match = re.search(r"inline void setup_card_visual\([\s\S]*?if \(is_text_sensor_card", grid)
+    assert (
+        "inline void reset_card_slot_dynamic_children" in grid
+        and "lv_obj_del(child);" in grid
+        and "lv_obj_set_user_data(s.sensor_container, nullptr);" in grid
+        and "lv_obj_clear_state(s.btn, LV_STATE_CHECKED);" in grid
+        and "lv_obj_clear_state(s.btn, LV_STATE_DISABLED);" in grid
+        and "lv_obj_set_style_opa(s.btn, LV_OPA_COVER, LV_PART_MAIN);" in grid
+        and setup_match
+        and "reset_card_slot_dynamic_children(s);" in setup_match.group(0)
+    ), "weather cards must clear stale widget children, active states, and opacity before rendering"
+    assert (
+        setup_match
+        and "lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);" in setup_match.group(0)
+        and "lv_obj_align(s.sensor_container, LV_ALIGN_TOP_LEFT, 0, 0);" in setup_match.group(0)
+        and "lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);" in setup_match.group(0)
+    ), "weather cards must reset inherited icon, value, and label placement before rendering"
+    assert "inline std::string normalize_weather_state" in config, (
+        "current weather device cards should normalize equivalent weather state spellings before mapping icons"
+    )
+    assert 'if (normalized == "partly-cloudy") return "partlycloudy";' in config, (
+        "current weather device cards should accept the dashed partly-cloudy spelling"
+    )
+    assert 'if (normalized.compare(0, 8, "weather-") == 0) normalized = normalized.substr(8);' in config, (
+        "current weather device cards should accept web weather icon names as state aliases"
+    )
+    assert 'if (normalized.compare(0, 4, "mdi-") == 0) normalized = normalized.substr(4);' in config, (
+        "current weather device cards should accept web Material Design weather class names as state aliases"
+    )
+    assert 'if (normalized == "night") return "clear-night";' in config, (
+        "current weather device cards should map the web Weather Night icon name to clear night"
+    )
+    assert 'normalized == "night-cloudy"' in config and 'return "night-partly-cloudy";' in config, (
+        "current weather device cards should accept night cloudy aliases for the web weather icon"
+    )
+    assert 'normalized == "sunny-off"' in config and 'return "unavailable";' in config, (
+        "current weather device cards should map the web unavailable weather icon name"
+    )
+    assert 'normalized == "unknown"' in config and 'return "unavailable";' in config, (
+        "current weather device cards should render unknown states with the unavailable weather icon"
+    )
+    assert 'if (b.type == "weather" && !card_runtime_weather_forecast_precision(b.precision))' in subpages, (
+        "subpage weather cards must normalize invalid weather modes like main grid cards"
+    )
+    for alias, state in (
+        ("blizzard", "snowy-heavy"),
+        ("broken-clouds", "cloudy"),
+        ("clear", "sunny"),
+        ("clear-day", "sunny"),
+        ("drizzle", "rainy"),
+        ("few-clouds", "partlycloudy"),
+        ("foggy", "fog"),
+        ("freezing-rain", "snowy-rainy"),
+        ("heavy-rain", "pouring"),
+        ("heavy-showers", "pouring"),
+        ("heavy-snow", "snowy-heavy"),
+        ("light-rain", "rainy"),
+        ("mostly-clear", "sunny"),
+        ("mostly-clear-night", "clear-night"),
+        ("mostly-cloudy", "cloudy"),
+        ("mostly-sunny", "sunny"),
+        ("night-clear", "clear-night"),
+        ("overcast", "cloudy"),
+        ("partly-cloudy-day", "partlycloudy"),
+        ("cloudy-night", "night-partly-cloudy"),
+        ("few-clouds-night", "night-partly-cloudy"),
+        ("mostly-cloudy-night", "night-partly-cloudy"),
+        ("partly-cloudy-night", "night-partly-cloudy"),
+        ("partly-sunny", "partlycloudy"),
+        ("possibly-rainy-day", "rainy"),
+        ("possibly-rainy-night", "rainy"),
+        ("possibly-sleet-day", "snowy-rainy"),
+        ("possibly-sleet-night", "snowy-rainy"),
+        ("possibly-snow-day", "snowy"),
+        ("possibly-snow-night", "snowy"),
+        ("possibly-thunderstorm-day", "lightning-rainy"),
+        ("possibly-thunderstorm-night", "lightning-rainy"),
+        ("rain", "rainy"),
+        ("sleet", "snowy-rainy"),
+        ("snow", "snowy"),
+        ("scattered-clouds", "cloudy"),
+        ("showers", "rainy"),
+        ("storm", "lightning"),
+        ("stormy", "lightning"),
+        ("thunderstorm", "lightning"),
+        ("thunderstorms", "lightning"),
+    ):
+        assert f'if (normalized == "{alias}") return "{state}";' in config or (
+            f'normalized == "{alias}"' in config and f'return "{state}";' in config
+        ), f"current weather device cards should normalize provider alias {alias} to {state}"
+    for state, icon_name, label in (
+        ("cloudy-alert", "Weather Cloudy Alert", "Cloudy Alert"),
+        ("dust", "Weather Dust", "Dust"),
+        ("hazy", "Weather Hazy", "Hazy"),
+        ("hurricane", "Weather Hurricane", "Hurricane"),
+        ("night-partly-cloudy", "Weather Night Cloudy", "Partly Cloudy Night"),
+        ("partly-lightning", "Weather Partly Lightning", "Partly Lightning"),
+        ("partly-rainy", "Weather Partly Rainy", "Partly Rainy"),
+        ("partly-snowy", "Weather Partly Snowy", "Partly Snowy"),
+        ("partly-snowy-rainy", "Weather Partly Snowy Rainy", "Partly Snow And Rain"),
+        ("snowy-heavy", "Weather Snowy Heavy", "Heavy Snow"),
+        ("sunny-alert", "Weather Sunny Alert", "Sunny Alert"),
+        ("sunset", "Weather Sunset", "Sunset"),
+        ("sunset-down", "Weather Sunset Down", "Sunset Down"),
+        ("sunset-up", "Weather Sunset Up", "Sunset Up"),
+        ("tornado", "Weather Tornado", "Tornado"),
+    ):
+        assert f'if (normalized == "{state}") return find_icon("{icon_name}");' in config, (
+            f"current weather device card should map {state} to the matching web weather icon"
+        )
+        assert f'if (normalized == "{state}") return espcontrol_i18n(std::string("{label}"));' in config, (
+            f"current weather device card should label {state} like the web preview"
+        )
+
+
+def test_weather_card_mode_visibility_reset() -> None:
+    cards = BUTTON_GRID_CARDS.read_text(encoding="utf-8")
+    match = re.search(
+        r"inline void setup_weather_card\(BtnSlot &s,[\s\S]*?\n\}",
+        cards,
+    )
+    assert match, "current weather setup is missing"
+    body = match.group(0)
+    assert "lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN)" in body, (
+        "current weather cards must restore the icon after forecast mode hid it"
+    )
+    assert "lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN)" in body, (
+        "current weather cards must hide the forecast sensor row"
+    )
+
+
+def test_grid_phase2_uses_cleaned_spanned_layout() -> None:
+    grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(encoding="utf-8")
+    match = re.search(
+        r"inline void grid_phase2\([\s\S]*?ESP_LOGI\(\"sensors\", \"Phase 2: done",
+        grid,
+    )
+    assert match, "shared grid phase 2 is missing"
+    body = match.group(0)
+    assert "OrderResult parsed, order;" in body and "clear_spanned_cells(parsed, NS, COLS, order);" in body, (
+        "phase 2 must bind weather/card state using the same cleaned spanned layout as the preview"
+    )
+    assert "int idx = order.positions[pos];" in body, (
+        "phase 2 must skip grid cells covered by larger cards"
+    )
+
+
+def test_temperature_unit_changes_refresh_weather_cards() -> None:
+    config = (ROOT / "components" / "espcontrol" / "button_grid_config.h").read_text(encoding="utf-8")
+    match = re.search(
+        r"inline void refresh_temperature_unit_labels\(\)[\s\S]*?\n\}",
+        config,
+    )
+    assert match, "temperature unit label refresh helper is missing"
+    body = match.group(0)
+    assert "notify_dashboard_content_changed()" in body, (
+        "temperature unit changes must refresh e-paper weather cards"
+    )
+
+
+def test_current_weather_state_updates_availability() -> None:
+    subscriptions = (ROOT / "components" / "espcontrol" / "button_grid_subscriptions.h").read_text(encoding="utf-8")
+    grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(encoding="utf-8")
+    match = re.search(
+        r"inline void subscribe_weather_state\([\s\S]*?\n\}",
+        subscriptions,
+    )
+    assert match, "current weather state subscription is missing"
+    body = match.group(0)
+    assert "apply_control_availability(btn_ptr, btn_ptr, !unavailable, false)" in body, (
+        "current weather cards must clear unavailable styling when Home Assistant sends a valid state"
+    )
+    assert "apply_control_availability(btn_ptr, btn_ptr, false, false)" in body, (
+        "current weather cards must start unavailable until Home Assistant sends a state"
+    )
+    assert "notify_dashboard_content_changed()" in body, "current weather state changes must notify the dashboard"
+    assert "uint32_t generation = ha_subscription_generation();" in body and "generation != ha_subscription_generation()" in body, (
+        "current weather callbacks must ignore stale subscriptions after dashboard reconfiguration"
+    )
+    assert "bump_ha_subscription_generation();" in grid, (
+        "dashboard reconfiguration must invalidate stale current weather subscriptions"
+    )
+    assert "weather_forecast_cancel_pending_requests();" in grid, (
+        "dashboard reconfiguration must cancel stale weather forecast action responses"
+    )
+    assert (
+        "if (bind_basic_sensor_card(sub_slot, sb_cfg, palette)) continue;" in grid
+        and "if (bind_passive_card_sources(sub_slot, sb_cfg)) continue;" in grid
+    ), "subpage weather cards must use the same passive weather binding path as main-grid weather cards"
+    assert (
+        "if (p.type == \"weather\")" in grid
+        and "subscribe_weather_state(s.icon_lbl, s.text_lbl, p.entity)" in grid
+    ), "subpage weather cards must use the same weather binding as main-grid weather cards"
 
 
 def test_firmware_matrices(profile_slugs: list[str]) -> None:
@@ -110,6 +343,11 @@ def main() -> int:
     test_generated_web(profile_slugs)
     test_generated_yaml(profiles)
     test_setup_icon_glyphs()
+    test_weather_card_visual_matches_preview()
+    test_weather_card_mode_visibility_reset()
+    test_grid_phase2_uses_cleaned_spanned_layout()
+    test_temperature_unit_changes_refresh_weather_cards()
+    test_current_weather_state_updates_availability()
     test_firmware_matrices(profile_slugs)
     test_public_firmware_slugs(profile_slugs)
     print("Device profile cross-checks passed.")

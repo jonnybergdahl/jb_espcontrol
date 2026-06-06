@@ -18,6 +18,7 @@ DEVICES_DIR = ROOT / "devices"
 VALID_CHIP_FAMILIES = {"ESP32-P4", "ESP32-S3"}
 VALID_DRAG_MODES = {"swap", "displace"}
 VALID_ROTATIONS = {"0", "90", "180", "270"}
+VALID_DISPLAY_MODES = {"color", "monochrome"}
 REQUIRED_FONT_ROLES = (
     "icon",
     "sensor",
@@ -185,6 +186,12 @@ def validate_display(slug: str, device: dict[str, Any], errors: list[str]) -> No
 
     if not isinstance(display.get("wrapTallLabels"), bool):
         errors.append(device_error(slug, "firmware.display.wrapTallLabels must be true or false"))
+    if "infoOnly" in display and not isinstance(display["infoOnly"], bool):
+        errors.append(device_error(slug, "firmware.display.infoOnly must be true or false when set"))
+
+    if "mode" in display and display["mode"] not in VALID_DISPLAY_MODES:
+        valid = ", ".join(sorted(VALID_DISPLAY_MODES))
+        errors.append(device_error(slug, f"firmware.display.mode must be one of {valid} when set"))
 
     for key in ("widthCompensationPercent", "volumeWidthCompensationPercent"):
         if key in display and not is_number(display[key]):
@@ -354,11 +361,17 @@ def validate_web(slug: str, device: dict[str, Any], errors: list[str]) -> None:
         errors.append(device_error(slug, "web.dragMode must be swap or displace"))
     if not isinstance(web.get("dragAnimation"), bool):
         errors.append(device_error(slug, "web.dragAnimation must be true or false"))
+    if "infoOnly" in web and not isinstance(web["infoOnly"], bool):
+        errors.append(device_error(slug, "web.infoOnly must be true or false when set"))
+    preview_theme = web.get("previewTheme", "default")
+    if preview_theme not in ("default", "epaper"):
+        errors.append(device_error(slug, "web.previewTheme must be default or epaper"))
     disabled_card_types = web.get("disabledCardTypes", [])
     if not isinstance(disabled_card_types, list) or not all(
         isinstance(value, str) and value for value in disabled_card_types
     ):
         errors.append(device_error(slug, "web.disabledCardTypes must be a list of non-empty strings"))
+
 
     validate_screen_box(slug, errors, web.get("screen"), "web.screen")
 
@@ -392,6 +405,10 @@ def validate_web(slug: str, device: dict[str, Any], errors: list[str]) -> None:
         for key in ("radius", "padding", "iconSize", "labelSize"):
             if not is_number(btn.get(key)):
                 errors.append(device_error(slug, f"web.btn.{key} must be a number"))
+        if "borderWidth" in btn and not is_number(btn.get("borderWidth")):
+            errors.append(device_error(slug, "web.btn.borderWidth must be a number when set"))
+        if "labelWeight" in btn and not is_positive_int(btn.get("labelWeight")):
+            errors.append(device_error(slug, "web.btn.labelWeight must be a positive integer when set"))
         for key in ("labelLines", "labelLinesDouble"):
             if not is_positive_int(btn.get(key)):
                 errors.append(device_error(slug, f"web.btn.{key} must be a positive integer"))
@@ -524,6 +541,8 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
         "climate_option_title_font": fonts.get("climateOptionTitle"),
         "climate_option_value_font": fonts.get("climateOptionValue"),
         "wrap_tall_labels": display["wrapTallLabels"],
+        "info_only": bool(display.get("infoOnly")),
+        "display_mode": display.get("mode", "color"),
         "package": firmware.get("package"),
     }
     if "portraitCols" in layout:
@@ -556,7 +575,7 @@ def slot_devices(path: Path = DEVICE_MANIFEST) -> list[dict[str, Any]]:
 
 def public_device_capability(profile: dict[str, Any]) -> dict[str, Any]:
     package = profile["firmware"]["package"]
-    return {
+    capability = {
         "slug": profile["slug"],
         "installSlug": profile["slug"],
         "name": profile["public"]["name"],
@@ -573,7 +592,12 @@ def public_device_capability(profile: dict[str, Any]) -> dict[str, Any]:
         "relays": len(profile["internalRelays"]),
         "rotation": bool((profile.get("rotation") or {}).get("enabled")),
         "ethernetManualInstall": bool(package.get("ethernetSelectable")),
+        "subpages": "subpage" not in profile["web"].get("disabledCardTypes", []),
     }
+    display = profile["firmware"].get("display") or {}
+    if display.get("mode") == "monochrome":
+        capability["monochrome"] = True
+    return capability
 
 
 def public_device_capabilities(path: Path = DEVICE_MANIFEST) -> dict[str, Any]:

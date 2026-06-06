@@ -20,8 +20,9 @@ function updatePreviewHint(c) {
 function renderSelectionBar(c) {
   if (!els.selectionBar) return;
   c = c || ctx();
+  var clockBarItem = state.clockBarSelectedItem || "";
   els.selectionBar.innerHTML = "";
-  if (isConfigLocked() || !c.selected.length) {
+  if (isConfigLocked() || (!clockBarItem && !c.selected.length)) {
     els.selectionBar.className = "sp-selection-bar";
     return;
   }
@@ -30,15 +31,19 @@ function renderSelectionBar(c) {
 
   var label = document.createElement("span");
   label.className = "sp-selection-label";
-  label.textContent = c.selected.length === 1 && c.selected[0] === -2
-    ? "Back button selected"
-    : (c.selected.length === 1 ? "1 card selected" : c.selected.length + " cards selected");
+  if (clockBarItem) {
+    label.textContent = "1 clock bar item selected";
+  } else if (c.selected.length === 1 && c.selected[0] === -2) {
+    label.textContent = "Back button selected";
+  } else {
+    label.textContent = c.selected.length === 1 ? "1 card selected" : c.selected.length + " cards selected";
+  }
   els.selectionBar.appendChild(label);
 
   var actions = document.createElement("div");
   actions.className = "sp-selection-actions";
 
-  if (c.selected.length === 1) {
+  if ((clockBarItem && clockBarItemHasSettings(clockBarItem)) || (!clockBarItem && c.selected.length === 1)) {
     var editBtn = document.createElement("button");
     editBtn.type = "button";
     editBtn.className = "sp-selection-btn sp-selection-btn-primary";
@@ -54,7 +59,7 @@ function renderSelectionBar(c) {
   var menuBtn = document.createElement("button");
   menuBtn.type = "button";
   menuBtn.className = "sp-selection-btn";
-  menuBtn.setAttribute("aria-label", "Card actions");
+  menuBtn.setAttribute("aria-label", clockBarItem ? "Clock bar item actions" : "Card actions");
   menuBtn.innerHTML = '<span class="mdi mdi-dots-horizontal"></span>';
   menuBtn.addEventListener("click", function (e) {
     e.preventDefault();
@@ -69,16 +74,22 @@ function closeSettings() {
   hideSettingsOverlay();
   _settingsDeferred = false;
   state.settingsDraft = null;
+  state.clockBarSelectedItem = "";
+  state.clockBarAddDraft = null;
   ctx().setSelected([]);
+  updateClockBarItemUi();
   renderPreview();
 }
 
 function clearCardSelection() {
   var c = ctx();
-  if (!c.selected.length && c.getLastClicked() < 0) return;
+  if (!c.selected.length && c.getLastClicked() < 0 && !state.clockBarSelectedItem && !state.clockBarAddDraft) return;
   c.setSelected([]);
   c.setLastClicked(-1);
+  state.clockBarSelectedItem = "";
+  state.clockBarAddDraft = null;
   hideSettingsOverlay();
+  updateClockBarItemUi();
   renderPreview();
   renderButtonSettings();
 }
@@ -86,6 +97,7 @@ function clearCardSelection() {
 function isSelectionControlTarget(target) {
   return !!(
     (els.previewMain && els.previewMain.contains(target)) ||
+    (els.topbar && els.topbar.contains(target)) ||
     (els.selectionBar && els.selectionBar.contains(target)) ||
     (els.settingsOverlay && els.settingsOverlay.contains(target)) ||
     (ctxMenu && ctxMenu.contains(target)) ||
@@ -101,13 +113,268 @@ function handleDocumentSelectionMouseDown(e) {
 
 function openSelectedCardSettings() {
   if (isConfigLocked()) return;
+  if (state.clockBarSelectedItem) {
+    if (!clockBarItemHasSettings(state.clockBarSelectedItem)) return;
+    renderButtonSettings(true);
+    return;
+  }
   var c = ctx();
   if (c.selected.length !== 1) return;
   renderButtonSettings(true);
 }
 
+function renderClockBarAddSettings(forceOpen) {
+  if (!state.clockBarAddDraft) return false;
+  if (!forceOpen && !isSettingsOpen()) return true;
+  if (els.settingsOverlay) els.settingsOverlay.classList.add("sp-visible");
+
+  var draft = state.clockBarAddDraft;
+  var container = els.buttonSettings;
+  var title = document.createElement("div");
+  title.className = "sp-section-title";
+  title.textContent = "Settings";
+  container.appendChild(title);
+
+  var panel = document.createElement("div");
+  panel.className = "sp-panel";
+
+  var chooseValue = "__choose-clockbar-item__";
+  var options = clockBarItemsAvailableToAdd(draft.section);
+  var itemField = document.createElement("div");
+  itemField.className = "sp-field";
+  itemField.appendChild(fieldLabel("Clock Bar", "sp-clockbar-add-type"));
+  var itemSelect = document.createElement("select");
+  itemSelect.className = "sp-select";
+  itemSelect.id = "sp-clockbar-add-type";
+  var chooseOpt = document.createElement("option");
+  chooseOpt.value = chooseValue;
+  chooseOpt.textContent = options.length ? "Select item type" : "No items available";
+  chooseOpt.disabled = true;
+  chooseOpt.selected = !draft.item;
+  itemSelect.appendChild(chooseOpt);
+  options.forEach(function (item) {
+    var opt = document.createElement("option");
+    opt.value = item;
+    opt.textContent = clockBarItemLabel(item);
+    if (draft.item === item) opt.selected = true;
+    itemSelect.appendChild(opt);
+  });
+  itemSelect.addEventListener("change", function () {
+    if (this.value === chooseValue) return;
+    draft.item = this.value;
+    if (isClockBarTemperatureItem(draft.item)) {
+      var index = clockBarTemperatureItemIndex(draft.item);
+      var entries = clockBarTemperatureEntries();
+      var restore = normalizeClockBarTemperatureEntities(state.clockBarTempRestoreEntities);
+      draft.temperatureEntity = entries[index] || restore[index] || (index === 0 ? "sensor.outdoor_temperature" : "");
+    } else if (draft.item === "weather") {
+      draft.weatherEntity = state.clockBarWeatherEntity || "";
+    }
+    renderButtonSettings(true);
+  });
+  itemField.appendChild(itemSelect);
+  panel.appendChild(itemField);
+
+  var tempInput = null;
+  if (isClockBarTemperatureItem(draft.item)) {
+    var tempIndex = clockBarTemperatureItemIndex(draft.item);
+    var tempField = document.createElement("div");
+    tempField.className = "sp-field";
+    var tempInputId = "sp-clockbar-add-temperature-entity-" + tempIndex;
+    tempField.appendChild(fieldLabel("Temperature Entity", tempInputId));
+    tempInput = entityInput(tempInputId, draft.temperatureEntity || "", "sensor.temperature", ["sensor"]);
+    tempField.appendChild(tempInput);
+    panel.appendChild(tempField);
+    tempInput.addEventListener("input", function () {
+      draft.temperatureEntity = this.value;
+    });
+    tempInput.addEventListener("change", function () {
+      draft.temperatureEntity = this.value;
+    });
+
+    var degreeSymbol = toggleRow("Show Degree Symbol", "sp-clockbar-add-degree-symbol", state.temperatureDegreeSymbolOn);
+    panel.appendChild(degreeSymbol.row);
+    degreeSymbol.input.addEventListener("change", function () {
+      draft.temperatureDegreeSymbolOn = this.checked;
+    });
+  }
+
+  var weatherInput = null;
+  if (draft.item === "weather") {
+    var weatherField = document.createElement("div");
+    weatherField.className = "sp-field";
+    var weatherInputId = "sp-clockbar-add-weather-entity";
+    weatherField.appendChild(fieldLabel("Weather Entity", weatherInputId));
+    weatherInput = entityInput(weatherInputId, draft.weatherEntity || "", "weather.home", ["weather"]);
+    weatherField.appendChild(weatherInput);
+    panel.appendChild(weatherField);
+    weatherInput.addEventListener("input", function () {
+      draft.weatherEntity = this.value;
+    });
+    weatherInput.addEventListener("change", function () {
+      draft.weatherEntity = this.value;
+    });
+  }
+
+  var row = document.createElement("div");
+  row.className = "sp-btn-row sp-btn-row--save";
+  var saveBtn = document.createElement("button");
+  saveBtn.type = "button";
+  saveBtn.className = "sp-action-btn sp-save-btn";
+  saveBtn.textContent = "Save";
+  saveBtn.disabled = !draft.item;
+  saveBtn.addEventListener("click", function () {
+    if (!draft.item) return;
+    if (tempInput) draft.temperatureEntity = tempInput.value;
+    if (weatherInput) draft.weatherEntity = weatherInput.value;
+    addClockBarItem(draft.item);
+    if (isClockBarTemperatureItem(draft.item)) {
+      var index = clockBarTemperatureItemIndex(draft.item);
+      var next = clockBarTemperatureEntries();
+      while (next.length <= index) next.push("");
+      next[index] = String(draft.temperatureEntity || "").trim();
+      applyClockBarTemperatureEntities(next, true);
+      if (draft.temperatureDegreeSymbolOn !== undefined &&
+          draft.temperatureDegreeSymbolOn !== state.temperatureDegreeSymbolOn) {
+        state.temperatureDegreeSymbolOn = !!draft.temperatureDegreeSymbolOn;
+        syncClockBarUi();
+        postTemperatureDegreeSymbol(state.temperatureDegreeSymbolOn);
+      }
+    } else if (draft.item === "weather") {
+      state.clockBarWeatherEntity = String(draft.weatherEntity || "").trim();
+      postText(entityName("clock_bar_weather_entity"), state.clockBarWeatherEntity);
+      syncClockBarWeatherUi();
+      updateWeatherPreview();
+    }
+    moveClockBarItem(draft.item, draft.section);
+    state.clockBarAddDraft = null;
+    closeSettings();
+  });
+  row.appendChild(saveBtn);
+  panel.appendChild(row);
+
+  container.appendChild(panel);
+  return true;
+}
+
+function fieldWithControl(labelText, inputId, control) {
+  var field = document.createElement("div");
+  field.className = "sp-field";
+  field.appendChild(fieldLabel(labelText, inputId));
+  if (control) field.appendChild(control);
+  return field;
+}
+
+function renderClockBarTemperatureEntityControl(panel, item) {
+  var index = clockBarTemperatureItemIndex(item);
+  if (index < 0) return;
+  var list = clockBarTemperatureEntries();
+  while (list.length <= index) list.push("");
+
+  var field = document.createElement("div");
+  field.className = "sp-field";
+  var inputId = "sp-clockbar-temperature-entity-" + index;
+  field.appendChild(fieldLabel("Temperature Entity", inputId));
+  var input = entityInput(inputId, list[index] || "", "sensor.temperature", ["sensor"]);
+  field.appendChild(input);
+  panel.appendChild(field);
+  els.setClockBarTemperatureEntity = input;
+
+  function saveInput() {
+    var next = clockBarTemperatureEntries();
+    while (next.length <= index) next.push("");
+    next[index] = input.value.trim();
+    applyClockBarTemperatureEntities(next, true);
+  }
+  input.addEventListener("blur", saveInput);
+  input.addEventListener("change", saveInput);
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") this.blur();
+  });
+}
+
+function renderClockBarWeatherEntityControl(panel) {
+  var field = document.createElement("div");
+  field.className = "sp-field";
+  var inputId = "sp-clockbar-weather-entity";
+  field.appendChild(fieldLabel("Weather Entity", inputId));
+  var input = entityInput(inputId, state.clockBarWeatherEntity || "", "weather.home", ["weather"]);
+  field.appendChild(input);
+  panel.appendChild(field);
+  els.setClockBarWeatherEntity = input;
+
+  function saveInput() {
+    state.clockBarWeatherEntity = input.value.trim();
+    postText(entityName("clock_bar_weather_entity"), state.clockBarWeatherEntity);
+    syncClockBarWeatherUi();
+    updateWeatherPreview();
+  }
+  input.addEventListener("blur", saveInput);
+  input.addEventListener("change", saveInput);
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") this.blur();
+  });
+}
+
+function renderClockBarSettings(forceOpen) {
+  if (!state.clockBarSelectedItem) return false;
+  var item = state.clockBarSelectedItem;
+  if (!clockBarItemHasSettings(item)) {
+    hideSettingsOverlay();
+    return false;
+  }
+  if (!forceOpen && !isSettingsOpen()) return true;
+  if (els.settingsOverlay) els.settingsOverlay.classList.add("sp-visible");
+
+  var container = els.buttonSettings;
+  var title = document.createElement("div");
+  title.className = "sp-section-title";
+  title.textContent = clockBarItemLabel(item);
+  container.appendChild(title);
+
+  var panel = document.createElement("div");
+  panel.className = "sp-panel";
+
+  if (isClockBarTemperatureItem(item)) {
+    renderClockBarTemperatureEntityControl(panel, item);
+    var degreeSymbol = toggleRow("Show Degree Symbol", "sp-clockbar-degree-symbol", state.temperatureDegreeSymbolOn);
+    panel.appendChild(degreeSymbol.row);
+    degreeSymbol.input.addEventListener("change", function () {
+      state.temperatureDegreeSymbolOn = this.checked;
+      syncClockBarUi();
+      postTemperatureDegreeSymbol(state.temperatureDegreeSymbolOn);
+    });
+  } else if (item === "weather") {
+    renderClockBarWeatherEntityControl(panel);
+  }
+
+  var row = document.createElement("div");
+  row.className = "sp-btn-row sp-btn-row--save sp-has-delete";
+  var delBtn = document.createElement("button");
+  delBtn.type = "button";
+  delBtn.className = "sp-action-btn sp-delete-btn";
+  delBtn.setAttribute("aria-label", "Delete");
+  delBtn.innerHTML = '<span class="mdi mdi-trash-can-outline"></span>';
+  delBtn.addEventListener("click", function () {
+    deleteClockBarItem(item);
+    renderButtonSettings();
+  });
+  row.appendChild(delBtn);
+  var saveBtn = document.createElement("button");
+  saveBtn.type = "button";
+  saveBtn.className = "sp-action-btn sp-save-btn";
+  saveBtn.textContent = "Save";
+  saveBtn.addEventListener("click", closeSettings);
+  row.appendChild(saveBtn);
+  panel.appendChild(row);
+
+  container.appendChild(panel);
+  return true;
+}
+
 function openCardSettings(slot) {
   if (isConfigLocked()) return;
+  state.clockBarAddDraft = null;
   var c = ctx();
   if ((slot > 0 || (slot === -2 && c.isSub)) && c.selected.indexOf(slot) === -1) {
     c.setSelected([slot]);
@@ -175,6 +442,10 @@ function renderButtonSettings(forceOpen) {
     return;
   }
 
+  if (renderClockBarAddSettings(forceOpen)) return;
+
+  if (renderClockBarSettings(forceOpen)) return;
+
   if (c.selected.length === 0) {
     hideSettingsOverlay();
     return;
@@ -196,9 +467,18 @@ function renderButtonSettings(forceOpen) {
 
   var slot = c.selected[0];
   var bIdx = slot - 1;
-  if (bIdx < 0 || bIdx >= c.buttons.length) return;
-  var liveButton = c.buttons[bIdx];
-  var draftKey = (c.isSub ? "sub:" + state.editingSubpage : "main") + ":" + slot;
+  var pendingNewDraft = !!(
+    state.settingsDraft &&
+    state.settingsDraft.isNew &&
+    state.settingsDraft.slot === slot &&
+    state.settingsDraft.isSub === c.isSub &&
+    (!c.isSub || state.settingsDraft.homeSlot === state.editingSubpage)
+  );
+  if (bIdx < 0 || (!pendingNewDraft && bIdx >= c.buttons.length)) return;
+  var liveButton = pendingNewDraft ? null : c.buttons[bIdx];
+  var draftKey = pendingNewDraft
+    ? state.settingsDraft.key
+    : (c.isSub ? "sub:" + state.editingSubpage : "main") + ":" + slot;
 
   function cloneButtonConfig(src) {
     return EspControlModel.cloneCardConfig(src);
@@ -209,7 +489,7 @@ function renderButtonSettings(forceOpen) {
     normalizeButtonConfig(target);
   }
 
-  if (!state.settingsDraft || state.settingsDraft.key !== draftKey) {
+  if (!pendingNewDraft && (!state.settingsDraft || state.settingsDraft.key !== draftKey)) {
     state.settingsDraft = {
       key: draftKey,
       slot: slot,
@@ -220,6 +500,7 @@ function renderButtonSettings(forceOpen) {
     };
   }
   var b = state.settingsDraft.button;
+  var isNewDraft = !!state.settingsDraft.isNew;
 
   var title = document.createElement("div");
   title.className = "sp-section-title";
@@ -322,19 +603,42 @@ function renderButtonSettings(forceOpen) {
   }
 
   function applySettingsDraft() {
-    if (!state.settingsDraft || state.settingsDraft.key !== draftKey) return;
-    copyButtonConfig(liveButton, state.settingsDraft.button);
-    state.settingsDraft = null;
-    if (c.isSub) {
-      saveSubpageConfig(state.editingSubpage);
+    if (!state.settingsDraft || state.settingsDraft.key !== draftKey) return false;
+    var draft = state.settingsDraft;
+    var savedButton = liveButton;
+    if (draft.isNew) {
+      var pos = draft.pos;
+      if (pos < 0 || pos >= c.maxSlots || c.grid[pos] !== 0) {
+        showBanner("That grid space is no longer available. Close this window and try again.", "error");
+        return false;
+      }
+      while (c.buttons.length < slot) {
+        c.buttons.push(emptyButtonConfig());
+      }
+      savedButton = c.buttons[slot - 1];
+      copyButtonConfig(savedButton, draft.button);
+      c.grid[pos] = slot;
+      if (c.isSub) {
+        saveSubpageConfig(state.editingSubpage);
+      } else {
+        postText(entityName("button_order"), serializeGrid(state.grid));
+        saveButtonConfig(slot);
+      }
     } else {
+      copyButtonConfig(liveButton, draft.button);
+    }
+    state.settingsDraft = null;
+    if (!draft.isNew && c.isSub) {
+      saveSubpageConfig(state.editingSubpage);
+    } else if (!draft.isNew) {
       saveButtonConfig(slot);
     }
-    var savedTypeDef = BUTTON_TYPES[liveButton.type || ""];
+    var savedTypeDef = BUTTON_TYPES[savedButton.type || ""];
     if (savedTypeDef && savedTypeDef.afterSave) {
-      savedTypeDef.afterSave(liveButton, slot, { isSub: c.isSub });
+      savedTypeDef.afterSave(savedButton, slot, { isSub: c.isSub });
     }
     renderPreview();
+    return true;
   }
 
   function bindField(input, field, rerender) {
@@ -471,14 +775,18 @@ function renderButtonSettings(forceOpen) {
     ], value || "0", onChange);
   }
 
-  var rawTypeDef = BUTTON_TYPES[b.type || ""] || BUTTON_TYPES[""];
+  var isNewDraftWithoutType = isNewDraft && !state.settingsDraft.typeSelected;
+  var rawTypeDef = isNewDraftWithoutType ? null : (BUTTON_TYPES[b.type || ""] || BUTTON_TYPES[""]);
   var typeDef = rawTypeDef;
   var rawExperimental = buttonTypeRegistryValue(rawTypeDef, "experimental", "");
   if (rawExperimental && !isExperimentalEnabled(rawExperimental)) {
     typeDef = hiddenExperimentalButtonTypeDef(rawTypeDef);
   }
   {
-    var selectedTypeKey = buttonTypeRegistryValue(rawTypeDef, "pickerKey", "") || (b.type || "");
+    var chooseTypeValue = "__choose-card-type__";
+    var selectedTypeKey = isNewDraftWithoutType
+      ? null
+      : buttonTypeRegistryValue(rawTypeDef, "pickerKey", "") || (b.type || "");
     var typeOpts = buttonTypePickerOptionList(c.isSub, selectedTypeKey);
     var tf = document.createElement("div");
     tf.className = "sp-field";
@@ -486,17 +794,29 @@ function renderButtonSettings(forceOpen) {
     var typeSelect = document.createElement("select");
     typeSelect.className = "sp-select";
     typeSelect.id = "sp-inp-type";
+    if (isNewDraftWithoutType) {
+      var chooseOpt = document.createElement("option");
+      chooseOpt.value = chooseTypeValue;
+      chooseOpt.textContent = "Select card type";
+      chooseOpt.disabled = true;
+      chooseOpt.selected = true;
+      typeSelect.appendChild(chooseOpt);
+    }
     typeOpts.forEach(function (o) {
       var opt = document.createElement("option");
       opt.value = o.key;
       opt.textContent = o.label;
       opt.disabled = !!o.disabled;
-      if (selectedTypeKey === o.key) opt.selected = true;
+      if (!isNewDraftWithoutType && selectedTypeKey === o.key) opt.selected = true;
       typeSelect.appendChild(opt);
     });
     typeSelect.addEventListener("change", function () {
       var newType = this.value;
+      if (newType === chooseTypeValue) return;
       b.type = newType;
+      if (state.settingsDraft && state.settingsDraft.key === draftKey) {
+        state.settingsDraft.typeSelected = true;
+      }
       var td = BUTTON_TYPES[newType];
       if (td && td.onSelect) td.onSelect(b);
       saveField("type", newType);
@@ -504,6 +824,10 @@ function renderButtonSettings(forceOpen) {
     });
     tf.appendChild(typeSelect);
     panel.appendChild(tf);
+    if (isNewDraftWithoutType) {
+      container.appendChild(panel);
+      return;
+    }
   }
 
   var typeHelpers = {
@@ -724,32 +1048,48 @@ function renderButtonSettings(forceOpen) {
         saveField("icon_on", "Auto");
       }
     });
+
+    var patternField = selectField("On State Pattern", idPrefix + "on-pattern", [
+      ["", "Solid"],
+      ["stripes", "Stripes"],
+    ], cardOnPattern(b), function () {
+      setCardOnPattern(b, this.value);
+      saveField("options", b.options);
+      renderPreview();
+    });
+    panel.appendChild(patternField.field);
   }
 
   var saveRow = document.createElement("div");
   saveRow.className = "sp-btn-row sp-btn-row--save";
 
-  var delBtn = document.createElement("button");
-  delBtn.className = "sp-action-btn sp-delete-btn";
-  delBtn.innerHTML = '<span class="mdi mdi-trash-can-outline"></span>';
-  delBtn.addEventListener("click", function () {
-    state.settingsDraft = null;
-    deleteSlot(slot);
-  });
-  saveRow.appendChild(delBtn);
-  saveRow.classList.add("sp-has-delete");
+  if (!isNewDraft) {
+    var delBtn = document.createElement("button");
+    delBtn.className = "sp-action-btn sp-delete-btn";
+    delBtn.innerHTML = '<span class="mdi mdi-trash-can-outline"></span>';
+    delBtn.addEventListener("click", function () {
+      state.settingsDraft = null;
+      deleteSlot(slot);
+    });
+    saveRow.appendChild(delBtn);
+    saveRow.classList.add("sp-has-delete");
+  }
 
   var rightGroup = document.createElement("div");
   rightGroup.className = "sp-btn-group-right";
   var editSubBtn = panel.querySelector(".sp-edit-subpage-btn");
-  if (editSubBtn) rightGroup.appendChild(editSubBtn);
+  if (editSubBtn && isNewDraft && editSubBtn.parentNode) {
+    editSubBtn.parentNode.removeChild(editSubBtn);
+  } else if (editSubBtn) {
+    rightGroup.appendChild(editSubBtn);
+  }
   var saveBtn = document.createElement("button");
   saveBtn.className = "sp-action-btn sp-save-btn";
   saveBtn.textContent = "Save";
   saveBtn.addEventListener("click", function () {
     if (!validateSettingsDraft()) return;
     if (!validateConfigSize()) return;
-    applySettingsDraft();
+    if (!applySettingsDraft()) return;
     closeSettings();
   });
   rightGroup.appendChild(saveBtn);

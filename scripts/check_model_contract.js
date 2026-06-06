@@ -104,6 +104,46 @@ assert.strictEqual(
   "1,B|scene.movie:Movie",
   "subpage serialization chooses the shorter compatible format"
 );
+const structuredSubpageSource = {
+  order: ["2d", "3w", "Bt", "1"],
+  buttons: [
+    { entity: "scene.movie", label: "Movie", icon: "Flash", icon_on: "Auto", sensor: "scene.turn_on", unit: "", type: "action", precision: "", options: "state_entity=light.living" },
+    { entity: "media_player.living", label: "Living", icon: "Auto", icon_on: "Auto", sensor: "play_pause", unit: "", type: "media", precision: "state", options: "" },
+    { entity: "climate.hallway", label: "Hallway", icon: "Thermostat", icon_on: "Radiator", sensor: "", unit: "", type: "climate", precision: "1", options: "number_display=icon" },
+    { entity: "", label: "Temp", icon: "Thermometer", icon_on: "Auto", sensor: "sensor.hallway_temperature", unit: "\u00B0C", type: "sensor", precision: "1", options: "large_numbers" },
+    { entity: "", label: "", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "", precision: "", options: "" },
+  ],
+  backLabel: "Return Home",
+};
+const structuredSubpageObject = model.structuredSubpageFromParsed(structuredSubpageSource);
+assert.deepStrictEqual(plain(structuredSubpageObject), {
+  order: ["2d", "3w", "Bt", "1"],
+  back_label: "Return Home",
+  buttons: structuredSubpageSource.buttons,
+}, "structured subpage export preserves readable order, back label, and buttons");
+assert.deepStrictEqual(
+  plain(model.parseStructuredSubpageConfig(structuredSubpageObject)),
+  plain(structuredSubpageSource),
+  "structured subpage import round-trips action, media, climate, sensor, and empty buttons"
+);
+assert.deepStrictEqual(plain(model.parseStructuredSubpageConfig({
+  order: ["B=Encoded%20Back", "1"],
+  buttons: [{ label: "Partial" }],
+})), {
+  order: ["B", "1"],
+  buttons: [{
+    entity: "",
+    label: "Partial",
+    icon: "Auto",
+    icon_on: "Auto",
+    sensor: "",
+    unit: "",
+    type: "",
+    precision: "",
+    options: "",
+  }],
+  backLabel: "Encoded Back",
+}, "structured subpage import defaults missing card fields and decodes legacy back labels");
 
 const layoutPlan = model.planBackupButtonLayout([
   { entity: "light.kitchen", label: "Kitchen" },
@@ -156,9 +196,12 @@ assert.deepStrictEqual(
 
 const panelSettings = model.normalizeBackupPanelSettings({
   temperature_unit: "centigrade",
+  clock_bar_time: false,
+  clock_bar_weather_icon: true,
+  clock_bar_weather_entity: "weather.home",
+  language: "it",
   clock_format: "24h",
   ntp_server_1: "pool.ntp.org",
-  month_names: "Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec",
   screensaver_mode: "timer",
   screensaver_action: "Screen Dimmed",
   clock_brightness_day: 44,
@@ -166,6 +209,7 @@ const panelSettings = model.normalizeBackupPanelSettings({
   screen_rotation: "90",
 }, {
   timezone: "UTC (GMT+0)",
+  language: "en",
   clockFormat: "12h",
   clockFormatOptions: ["12h", "24h"],
   developerExperimentalFeatures: false,
@@ -173,18 +217,36 @@ const panelSettings = model.normalizeBackupPanelSettings({
   ntpServer1: "0.pool.ntp.org",
   ntpServer2: "1.pool.ntp.org",
   ntpServer3: "2.pool.ntp.org",
-  monthNames: model.MONTH_NAME_DEFAULTS,
   screenRotationOptions: ["0", "90", "180", "270"],
 });
 assert.strictEqual(panelSettings.temperatureUnit, "\u00B0C", "panel temperature unit normalizes");
+assert.strictEqual(panelSettings.clockBarTime, false, "panel clock bar time imports");
+assert.strictEqual(panelSettings.clockBarWeatherIcon, true, "panel clock bar weather icon imports");
+assert.strictEqual(panelSettings.clockBarWeatherEntity, "weather.home", "panel clock bar weather entity imports");
+assert.strictEqual(panelSettings.language, "it", "panel language imports");
 assert.strictEqual(panelSettings.clockFormat, "24h", "panel clock format validates against options");
 assert.strictEqual(panelSettings.ntpServer1, "pool.ntp.org", "panel NTP server imports");
-assert.strictEqual(panelSettings.monthNames[0], "Jan", "panel month names import");
 assert.strictEqual(panelSettings.screensaverMode, "timer", "panel screensaver mode imports");
 assert.strictEqual(panelSettings.screensaverAction, "dim", "panel screensaver action imports");
 assert.strictEqual(panelSettings.clockBrightnessDay, 44, "panel day clock brightness imports");
 assert.strictEqual(panelSettings.clockBrightnessNight, 22, "panel night clock brightness imports");
 assert.strictEqual(panelSettings.subpageChevron, true, "panel subpage chevron defaults on");
 assert.strictEqual(panelSettings.screenRotation, "90", "panel rotation validates against options");
+
+const legacyPanelSettings = model.normalizeBackupPanelSettings({}, {
+  timezone: "UTC (GMT+0)",
+  language: "en",
+  clockFormat: "12h",
+  clockFormatOptions: ["12h", "24h"],
+  developerExperimentalFeatures: false,
+  ntpDefaults: ["0.pool.ntp.org", "1.pool.ntp.org", "2.pool.ntp.org"],
+  ntpServer1: "0.pool.ntp.org",
+  ntpServer2: "1.pool.ntp.org",
+  ntpServer3: "2.pool.ntp.org",
+  screenRotationOptions: ["0", "90", "180", "270"],
+});
+assert.strictEqual(legacyPanelSettings.clockBarTime, true, "legacy panel settings default clock bar time on");
+assert.strictEqual(legacyPanelSettings.clockBarWeatherIcon, false, "legacy panel settings default clock bar weather icon off");
+assert.strictEqual(legacyPanelSettings.clockBarWeatherEntity, "", "legacy panel settings default clock bar weather entity empty");
 
 console.log("Model contract tests passed.");

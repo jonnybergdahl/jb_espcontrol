@@ -63,7 +63,7 @@ function colorField(id, value, onChange) {
   inp.className = "sp-input";
   inp.id = id;
   inp.value = value;
-  inp.placeholder = "6-digit hex e.g. FF8C00";
+  inp.placeholder = "6-digit hex e.g. 0073FF";
   row.appendChild(inp);
 
   picker.addEventListener("input", function () {

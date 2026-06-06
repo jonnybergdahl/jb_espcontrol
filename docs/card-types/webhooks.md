@@ -29,7 +29,7 @@ Jeedom scenarios and commands often use HTTP GET URLs. Paste the full Jeedom API
 Example:
 
 ```text
-http://192.168.1.50/core/api/jeeApi.php?apikey=YOUR_KEY&type=scenario&id=56&action=start
+http://jeedom.local/core/api/jeeApi.php?apikey=YOUR_KEY&type=scenario&id=56&action=start
 ```
 
 ### Home Assistant Webhook

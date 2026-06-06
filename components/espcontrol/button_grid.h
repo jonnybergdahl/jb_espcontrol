@@ -17,12 +17,14 @@
 #include <cstdint>
 #include <ctime>
 #include <cmath>
+#include <algorithm>
 #include <vector>
 #include <functional>
 #include "esphome/components/api/homeassistant_service.h"
 #include "esphome/components/http_request/http_request.h"
 #include "esphome/components/lvgl/lvgl_esphome.h"
 #include "esphome/core/string_ref.h"
+#include "i18n_generated.h"
 #include "icons.h"
 #include "backlight.h"
 

@@ -33,6 +33,20 @@ static_assert(correct_display_color(0x123456, 100, 0, 100) == 0x120056,
               "green correction must only adjust the green channel");
 static_assert(correct_display_color(0x123456, 100, 100, 0) == 0x123400,
               "blue correction must only adjust the blue channel");
+
+inline std::function<void()> &dashboard_content_changed_callback() {
+  static std::function<void()> callback;
+  return callback;
+}
+
+inline void set_dashboard_content_changed_callback(std::function<void()> callback) {
+  dashboard_content_changed_callback() = std::move(callback);
+}
+
+inline void notify_dashboard_content_changed() {
+  auto &callback = dashboard_content_changed_callback();
+  if (callback) callback();
+}
 static_assert(correct_display_color(0xF0F0F0, 200, 200, 200) == 0xFFFFFF,
               "colour correction must clamp channels at 255");
 
@@ -42,12 +56,12 @@ constexpr uint32_t DEFAULT_TERTIARY_COLOR = correct_display_color(0x212121);
 constexpr uint32_t DARK_BACKGROUND_SECONDARY = DEFAULT_OFF_COLOR;
 constexpr uint32_t DARK_BACKGROUND_TERTIARY = DEFAULT_TERTIARY_COLOR;
 constexpr uint32_t DARK_TEXT_PRIMARY = 0xFFFFFF;
-constexpr uint32_t DARK_TEXT_MUTED = 0xA0A0A0;
-constexpr uint32_t DARK_TEXT_SOFT = 0xE8E8E8;
-constexpr uint32_t DARK_BORDER = correct_display_color(0x454545);
-constexpr uint32_t DARK_CONTROL_NEUTRAL = correct_display_color(0xBDBDBD);
+constexpr uint32_t DARK_TEXT_MUTED = 0xB0B0B0;
+constexpr uint32_t DARK_TEXT_SOFT = 0xEFEFEF;
+constexpr uint32_t DARK_BORDER = correct_display_color(0x3A3A3A);
+constexpr uint32_t DARK_CONTROL_NEUTRAL = correct_display_color(0x424242);
 constexpr uint32_t DARK_OVERLAY = 0x000000;
-constexpr uint32_t DARK_TRACK_BACKGROUND = correct_display_color(0x333333);
+constexpr uint32_t DARK_TRACK_BACKGROUND = correct_display_color(0x2F2F2F);
 #ifndef ESPCONTROL_MAX_GRID_SLOTS
 #define ESPCONTROL_MAX_GRID_SLOTS 25
 #endif
@@ -83,6 +97,8 @@ struct BtnSlot {
   lv_obj_t *unit_lbl;               // unit suffix (°C, %, etc.)
   lv_obj_t *subpage_lbl = nullptr;  // small chevron marker for subpage cards
 };
+
+inline void set_card_checked_state(lv_obj_t *btn, bool checked);
 
 // Extract the Nth semicolon-delimited field from a config string
 inline std::string cfg_field(const std::string &cfg, int idx) {
@@ -500,6 +516,58 @@ inline std::string webhook_card_options_normalized(const std::string &options) {
   return headers.empty() ? std::string() : "webhook_headers=" + encode_compact_field(headers);
 }
 
+inline std::string normalize_card_on_pattern(const std::string &value) {
+  return value == "stripes" ? std::string("stripes") : std::string();
+}
+
+inline std::string switch_card_options_normalized(const std::string &options) {
+  std::string out;
+  std::string pattern = normalize_card_on_pattern(cfg_option_value(options, "on_pattern"));
+  if (!pattern.empty()) out = "on_pattern=" + pattern;
+  if (cfg_option_token_present(options, "large_numbers")) {
+    if (!out.empty()) out += ",";
+    out += "large_numbers";
+  }
+  if (cfg_option_token_present(options, "confirm_off")) {
+    if (!out.empty()) out += ",";
+    out += "confirm_off";
+  }
+  if (cfg_option_token_present(options, "confirm_on")) {
+    if (!out.empty()) out += ",";
+    out += "confirm_on";
+  }
+  std::string mode;
+  if (cfg_option_token_present(options, "confirm_off") &&
+      cfg_option_token_present(options, "confirm_on")) {
+    mode = "both";
+  } else if (cfg_option_token_present(options, "confirm_on")) {
+    mode = "on";
+  } else if (cfg_option_token_present(options, "confirm_off")) {
+    mode = "off";
+  }
+  if (!mode.empty()) {
+    std::string message = cfg_option_value(options, "confirm_message");
+    std::string yes = cfg_option_value(options, "confirm_yes");
+    std::string no = cfg_option_value(options, "confirm_no");
+    std::string default_message = mode == "on" ? "Turn on this device?"
+      : mode == "both" ? "Toggle this device?"
+      : "Turn off this device?";
+    if (!message.empty() && message != default_message) {
+      if (!out.empty()) out += ",";
+      out += "confirm_message=" + encode_compact_field(message);
+    }
+    if (!yes.empty() && yes != "Yes") {
+      if (!out.empty()) out += ",";
+      out += "confirm_yes=" + encode_compact_field(yes);
+    }
+    if (!no.empty() && no != "No") {
+      if (!out.empty()) out += ",";
+      out += "confirm_no=" + encode_compact_field(no);
+    }
+  }
+  return out;
+}
+
 inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   // Slider cards used to store "h" here for horizontal layout. Sliders are
   // now always vertical, so treat any saved slider sensor value as legacy.
@@ -520,6 +588,9 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.type = "weather";
     p.precision = "tomorrow";
     if (p.label == "Weather") p.label.clear();
+  }
+  if (p.type == "weather" && !card_runtime_weather_forecast_precision(p.precision)) {
+    p.precision.clear();
   }
   if (p.type == "media") {
     if (p.sensor == "controls") {
@@ -618,6 +689,9 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.options.clear();
     p.icon_on.clear();
     if (p.icon.empty() || p.icon == "Auto" || p.icon == "Chevron Down") p.icon = "Flash";
+  }
+  if (p.type.empty()) {
+    p.options = switch_card_options_normalized(p.options);
   }
   if (p.type == "door_window") {
     p.entity.clear();
@@ -764,9 +838,9 @@ inline bool switch_confirmation_required(const ParsedCfg &p, bool currently_on) 
 inline std::string switch_confirmation_default_message(const ParsedCfg &p) {
   bool confirm_off = cfg_option_enabled(p.options, "confirm_off");
   bool confirm_on = cfg_option_enabled(p.options, "confirm_on");
-  if (confirm_off && confirm_on) return "Toggle this device?";
-  if (confirm_on) return "Turn on this device?";
-  return "Turn off this device?";
+  if (confirm_off && confirm_on) return espcontrol_i18n(std::string("Toggle this device?"));
+  if (confirm_on) return espcontrol_i18n(std::string("Turn on this device?"));
+  return espcontrol_i18n(std::string("Turn off this device?"));
 }
 
 inline std::string switch_confirmation_message(const ParsedCfg &p) {
@@ -776,7 +850,7 @@ inline std::string switch_confirmation_message(const ParsedCfg &p) {
 
 inline std::string switch_confirmation_yes_text(const ParsedCfg &p) {
   std::string value = cfg_option_value(p.options, "confirm_yes");
-  return value.empty() ? std::string("Yes") : value;
+  return value.empty() ? espcontrol_i18n(std::string("Yes")) : value;
 }
 
 inline std::string switch_confirmation_no_text(const ParsedCfg &p) {
@@ -867,7 +941,13 @@ inline std::string text_sensor_display_text(esphome::StringRef value,
       last_space = false;
       continue;
     }
-    if (ch == '_' || ch == '-' || std::isspace(c)) {
+    if (ch == '-' && !out.empty() && out.back() != '\n' && out.back() != ' ') {
+      out.push_back(ch);
+      cap_next = true;
+      last_space = false;
+      continue;
+    }
+    if (ch == '_' || std::isspace(c)) {
       if (!out.empty() && !last_space && out.back() != '\n') {
         out.push_back(' ');
         last_space = true;
@@ -964,6 +1044,50 @@ inline bool ha_entity_state_unavailable_ref(const std::string &entity_id,
   return false;
 }
 
+struct HaControlAvailabilityRef {
+  lv_obj_t *visual_obj;
+  lv_obj_t *input_obj;
+  bool disable_interaction;
+};
+
+inline std::vector<HaControlAvailabilityRef> &ha_control_availability_refs() {
+  static std::vector<HaControlAvailabilityRef> refs;
+  return refs;
+}
+
+inline void reset_ha_control_availability_refs() {
+  ha_control_availability_refs().clear();
+}
+
+#ifndef ESPCONTROL_HA_RETRY_HELPERS_DEFINED
+inline void ha_reset_unavailable_state_retries() {}
+#endif
+
+inline uint32_t &ha_subscription_generation() {
+  static uint32_t generation = 1;
+  return generation;
+}
+
+inline void bump_ha_subscription_generation() {
+  uint32_t &generation = ha_subscription_generation();
+  generation++;
+  if (generation == 0) generation = 1;
+  ha_reset_unavailable_state_retries();
+}
+
+inline void register_ha_control_availability(lv_obj_t *visual_obj, lv_obj_t *input_obj,
+                                             bool disable_interaction = true) {
+  if (!visual_obj && !input_obj) return;
+  std::vector<HaControlAvailabilityRef> &refs = ha_control_availability_refs();
+  for (const auto &ref : refs) {
+    if (ref.visual_obj == visual_obj && ref.input_obj == input_obj &&
+        ref.disable_interaction == disable_interaction) {
+      return;
+    }
+  }
+  refs.push_back({visual_obj, input_obj, disable_interaction});
+}
+
 inline void apply_control_availability(lv_obj_t *visual_obj, lv_obj_t *input_obj,
                                        bool available, bool disable_interaction = true) {
   if (visual_obj) {
@@ -980,6 +1104,14 @@ inline void apply_control_availability(lv_obj_t *visual_obj, lv_obj_t *input_obj
   }
   if (available) lv_obj_add_flag(input_obj, LV_OBJ_FLAG_CLICKABLE);
   else lv_obj_clear_flag(input_obj, LV_OBJ_FLAG_CLICKABLE);
+}
+
+inline void apply_registered_ha_control_availability(bool available) {
+  const auto &refs = ha_control_availability_refs();
+  for (const auto &ref : refs) {
+    apply_control_availability(ref.visual_obj, ref.input_obj, available, ref.disable_interaction);
+  }
+  if (!refs.empty()) notify_dashboard_content_changed();
 }
 
 inline std::string sentence_cap_text(const std::string &state) {
@@ -1009,57 +1141,139 @@ inline std::string sentence_cap_text(const std::string &state) {
   return out;
 }
 
+inline std::string normalize_weather_state(std::string state) {
+  state = trim_display_unit(state);
+  std::string normalized;
+  normalized.reserve(state.size());
+  bool last_dash = false;
+  for (char ch : state) {
+    unsigned char uch = static_cast<unsigned char>(ch);
+    if (std::isalnum(uch)) {
+      normalized.push_back(static_cast<char>(std::tolower(uch)));
+      last_dash = false;
+    } else if (!last_dash) {
+      normalized.push_back('-');
+      last_dash = true;
+    }
+  }
+  while (!normalized.empty() && normalized.back() == '-') normalized.pop_back();
+  if (normalized.compare(0, 4, "mdi-") == 0) normalized = normalized.substr(4);
+  if (normalized.compare(0, 8, "weather-") == 0) normalized = normalized.substr(8);
+  if (normalized == "clear" || normalized == "mostly-clear" || normalized == "mostly-sunny") return "sunny";
+  if (normalized == "clear-day") return "sunny";
+  if (normalized == "overcast" || normalized == "broken-clouds" ||
+      normalized == "mostly-cloudy" || normalized == "scattered-clouds") return "cloudy";
+  if (normalized == "foggy") return "fog";
+  if (normalized == "night") return "clear-night";
+  if (normalized == "mostly-clear-night" || normalized == "night-clear") return "clear-night";
+  if (normalized == "partly-cloudy") return "partlycloudy";
+  if (normalized == "partly-sunny" || normalized == "few-clouds") return "partlycloudy";
+  if (normalized == "partly-cloudy-day") return "partlycloudy";
+  if (normalized == "partly-cloudy-night" || normalized == "mostly-cloudy-night" ||
+      normalized == "cloudy-night" || normalized == "few-clouds-night" ||
+      normalized == "night-cloudy") return "night-partly-cloudy";
+  if (normalized == "drizzle" || normalized == "light-rain" ||
+      normalized == "rain" || normalized == "showers") return "rainy";
+  if (normalized == "heavy-rain" || normalized == "heavy-showers") return "pouring";
+  if (normalized == "possibly-rainy-day" || normalized == "possibly-rainy-night") return "rainy";
+  if (normalized == "possibly-sleet-day" || normalized == "possibly-sleet-night") return "snowy-rainy";
+  if (normalized == "possibly-snow-day" || normalized == "possibly-snow-night") return "snowy";
+  if (normalized == "possibly-thunderstorm-day" || normalized == "possibly-thunderstorm-night") return "lightning-rainy";
+  if (normalized == "freezing-rain") return "snowy-rainy";
+  if (normalized == "blizzard" || normalized == "heavy-snow") return "snowy-heavy";
+  if (normalized == "sleet") return "snowy-rainy";
+  if (normalized == "snow") return "snowy";
+  if (normalized == "storm" || normalized == "stormy" ||
+      normalized == "thunderstorm" || normalized == "thunderstorms") return "lightning";
+  if (normalized == "sunny-off" || normalized == "unknown") return "unavailable";
+  return normalized;
+}
+
 inline const char* weather_icon_for_state(const std::string &state) {
-  if (state == "sunny") return find_icon("Weather Sunny");
-  if (state == "clear-night") return find_icon("Weather Night");
-  if (state == "partlycloudy") return find_icon("Weather Partly Cloudy");
-  if (state == "cloudy") return find_icon("Weather Cloudy");
-  if (state == "fog") return find_icon("Weather Fog");
-  if (state == "hail") return find_icon("Weather Hail");
-  if (state == "lightning") return find_icon("Weather Lightning");
-  if (state == "lightning-rainy") return find_icon("Weather Lightning Rainy");
-  if (state == "pouring") return find_icon("Weather Pouring");
-  if (state == "rainy") return find_icon("Weather Rainy");
-  if (state == "snowy") return find_icon("Weather Snowy");
-  if (state == "snowy-rainy") return find_icon("Weather Snowy Rainy");
-  if (state == "windy") return find_icon("Weather Windy");
-  if (state == "windy-variant") return find_icon("Weather Windy Variant");
-  if (state == "unavailable" || state.empty()) return find_icon("Weather Sunny Off");
+  std::string normalized = normalize_weather_state(state);
+  if (normalized == "sunny") return find_icon("Weather Sunny");
+  if (normalized == "clear-night") return find_icon("Weather Night");
+  if (normalized == "partlycloudy") return find_icon("Weather Partly Cloudy");
+  if (normalized == "cloudy") return find_icon("Weather Cloudy");
+  if (normalized == "cloudy-alert") return find_icon("Weather Cloudy Alert");
+  if (normalized == "dust") return find_icon("Weather Dust");
+  if (normalized == "fog") return find_icon("Weather Fog");
+  if (normalized == "hail") return find_icon("Weather Hail");
+  if (normalized == "hazy") return find_icon("Weather Hazy");
+  if (normalized == "hurricane") return find_icon("Weather Hurricane");
+  if (normalized == "lightning") return find_icon("Weather Lightning");
+  if (normalized == "lightning-rainy") return find_icon("Weather Lightning Rainy");
+  if (normalized == "night-partly-cloudy") return find_icon("Weather Night Cloudy");
+  if (normalized == "partly-lightning") return find_icon("Weather Partly Lightning");
+  if (normalized == "partly-rainy") return find_icon("Weather Partly Rainy");
+  if (normalized == "partly-snowy") return find_icon("Weather Partly Snowy");
+  if (normalized == "partly-snowy-rainy") return find_icon("Weather Partly Snowy Rainy");
+  if (normalized == "pouring") return find_icon("Weather Pouring");
+  if (normalized == "rainy") return find_icon("Weather Rainy");
+  if (normalized == "snowy") return find_icon("Weather Snowy");
+  if (normalized == "snowy-heavy") return find_icon("Weather Snowy Heavy");
+  if (normalized == "snowy-rainy") return find_icon("Weather Snowy Rainy");
+  if (normalized == "sunny-alert") return find_icon("Weather Sunny Alert");
+  if (normalized == "sunset") return find_icon("Weather Sunset");
+  if (normalized == "sunset-down") return find_icon("Weather Sunset Down");
+  if (normalized == "sunset-up") return find_icon("Weather Sunset Up");
+  if (normalized == "tornado") return find_icon("Weather Tornado");
+  if (normalized == "windy") return find_icon("Weather Windy");
+  if (normalized == "windy-variant") return find_icon("Weather Windy Variant");
+  if (normalized == "unavailable" || normalized.empty()) return find_icon("Weather Sunny Off");
   return find_icon("Weather Cloudy Alert");
 }
 
 inline std::string weather_label_for_state(const std::string &state) {
-  if (state == "sunny") return "Sunny";
-  if (state == "clear-night") return "Clear Night";
-  if (state == "partlycloudy") return "Partly Cloudy";
-  if (state == "cloudy") return "Cloudy";
-  if (state == "fog") return "Fog";
-  if (state == "hail") return "Hail";
-  if (state == "lightning") return "Lightning";
-  if (state == "lightning-rainy") return "Lightning And Rain";
-  if (state == "pouring") return "Pouring";
-  if (state == "rainy") return "Rainy";
-  if (state == "snowy") return "Snowy";
-  if (state == "snowy-rainy") return "Snowy And Rain";
-  if (state == "windy") return "Windy";
-  if (state == "windy-variant") return "Windy And Cloudy";
-  if (state == "exceptional") return "Exceptional";
-  if (state == "unknown") return "Unknown";
-  if (state == "unavailable" || state.empty()) return "Unavailable";
+  std::string normalized = normalize_weather_state(state);
+  if (normalized == "sunny") return espcontrol_i18n(std::string("Sunny"));
+  if (normalized == "clear-night") return espcontrol_i18n(std::string("Clear Night"));
+  if (normalized == "partlycloudy") return espcontrol_i18n(std::string("Partly Cloudy"));
+  if (normalized == "cloudy") return espcontrol_i18n(std::string("Cloudy"));
+  if (normalized == "cloudy-alert") return espcontrol_i18n(std::string("Cloudy Alert"));
+  if (normalized == "dust") return espcontrol_i18n(std::string("Dust"));
+  if (normalized == "fog") return espcontrol_i18n(std::string("Fog"));
+  if (normalized == "hail") return espcontrol_i18n(std::string("Hail"));
+  if (normalized == "hazy") return espcontrol_i18n(std::string("Hazy"));
+  if (normalized == "hurricane") return espcontrol_i18n(std::string("Hurricane"));
+  if (normalized == "lightning") return espcontrol_i18n(std::string("Lightning"));
+  if (normalized == "lightning-rainy") return espcontrol_i18n(std::string("Lightning And Rain"));
+  if (normalized == "night-partly-cloudy") return espcontrol_i18n(std::string("Partly Cloudy Night"));
+  if (normalized == "partly-lightning") return espcontrol_i18n(std::string("Partly Lightning"));
+  if (normalized == "partly-rainy") return espcontrol_i18n(std::string("Partly Rainy"));
+  if (normalized == "partly-snowy") return espcontrol_i18n(std::string("Partly Snowy"));
+  if (normalized == "partly-snowy-rainy") return espcontrol_i18n(std::string("Partly Snow And Rain"));
+  if (normalized == "pouring") return espcontrol_i18n(std::string("Pouring"));
+  if (normalized == "rainy") return espcontrol_i18n(std::string("Rainy"));
+  if (normalized == "snowy") return espcontrol_i18n(std::string("Snowy"));
+  if (normalized == "snowy-heavy") return espcontrol_i18n(std::string("Heavy Snow"));
+  if (normalized == "snowy-rainy") return espcontrol_i18n(std::string("Snowy And Rain"));
+  if (normalized == "sunny-alert") return espcontrol_i18n(std::string("Sunny Alert"));
+  if (normalized == "sunset") return espcontrol_i18n(std::string("Sunset"));
+  if (normalized == "sunset-down") return espcontrol_i18n(std::string("Sunset Down"));
+  if (normalized == "sunset-up") return espcontrol_i18n(std::string("Sunset Up"));
+  if (normalized == "tornado") return espcontrol_i18n(std::string("Tornado"));
+  if (normalized == "windy") return espcontrol_i18n(std::string("Windy"));
+  if (normalized == "windy-variant") return espcontrol_i18n(std::string("Windy And Cloudy"));
+  if (normalized == "exceptional") return espcontrol_i18n(std::string("Exceptional"));
+  if (normalized == "unknown") return espcontrol_i18n(std::string("Unknown"));
+  if (normalized == "unavailable" || normalized.empty()) return espcontrol_i18n(std::string("Unavailable"));
 
   return sentence_cap_text(state);
 }
 
 struct WeatherForecastCardRef {
+  lv_obj_t *btn;
   lv_obj_t *value_lbl;
   lv_obj_t *unit_lbl;
   lv_obj_t *label_lbl;
   std::string entity_id;
   std::string day;
   std::string label;
+  std::string status_label;
   bool valid = false;
-  int high = 0;
-  int low = 0;
+  float high = 0.0f;
+  float low = 0.0f;
   std::string source_unit;
 };
 
@@ -1074,10 +1288,14 @@ inline int &weather_forecast_card_count() {
 }
 
 inline void reset_weather_forecast_cards() {
+  WeatherForecastCardRef *refs = weather_forecast_card_refs();
+  for (int i = 0; i < MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS; i++) {
+    refs[i] = WeatherForecastCardRef();
+  }
   weather_forecast_card_count() = 0;
 }
 
-constexpr int WEATHER_FORECAST_TEMP_MISSING = 32767;
+constexpr float WEATHER_FORECAST_TEMP_MISSING = 32767.0f;
 constexpr int WEATHER_FORECAST_PENDING_MAX = 8;
 constexpr uint32_t WEATHER_FORECAST_REQUEST_TIMEOUT_MS = 60000;
 constexpr uint32_t WEATHER_FORECAST_RETRY_DELAY_MS = 300000;
@@ -1105,28 +1323,37 @@ inline std::string weather_forecast_unit_symbol(const std::string &unit) {
   return display_temperature_unit_symbol();
 }
 
+inline int weather_forecast_display_temp(float value, const std::string &unit) {
+  if (value == WEATHER_FORECAST_TEMP_MISSING) return value;
+  float converted = convert_temperature_value_for_display_float(value, unit);
+  return static_cast<int>(converted >= 0.0f ? converted + 0.5f : converted - 0.5f);
+}
+
 inline void apply_weather_forecast_card_text(const WeatherForecastCardRef &ref,
-                                             bool valid, int high, int low,
+                                             bool valid, float high, float low,
                                              const std::string &unit) {
   if (ref.label_lbl) {
-    std::string label = ref.label.empty()
-      ? (ref.day == "today" ? "Today" : "Tomorrow")
-      : ref.label;
+    std::string label = !ref.status_label.empty()
+      ? ref.status_label
+      : (ref.label.empty()
+          ? (ref.day == "today" ? espcontrol_i18n(std::string("Today")) : espcontrol_i18n(std::string("Tomorrow")))
+          : ref.label);
     lv_label_set_text(ref.label_lbl, label.c_str());
   }
   if (!ref.value_lbl || !ref.unit_lbl) return;
   if (!valid) {
     lv_label_set_text(ref.value_lbl, "--/--");
-    lv_label_set_text(ref.unit_lbl, "");
+    std::string normalized_unit = weather_forecast_unit_symbol(unit);
+    lv_label_set_text(ref.unit_lbl, normalized_unit.c_str());
     return;
   }
   char buf[24];
   char high_buf[12];
   char low_buf[12];
   if (high == WEATHER_FORECAST_TEMP_MISSING) snprintf(high_buf, sizeof(high_buf), "--");
-  else snprintf(high_buf, sizeof(high_buf), "%d", high);
+  else snprintf(high_buf, sizeof(high_buf), "%d", weather_forecast_display_temp(high, unit));
   if (low == WEATHER_FORECAST_TEMP_MISSING) snprintf(low_buf, sizeof(low_buf), "--");
-  else snprintf(low_buf, sizeof(low_buf), "%d", low);
+  else snprintf(low_buf, sizeof(low_buf), "%d", weather_forecast_display_temp(low, unit));
   snprintf(buf, sizeof(buf), "%s/%s", high_buf, low_buf);
   lv_label_set_text(ref.value_lbl, buf);
   std::string normalized_unit = weather_forecast_unit_symbol(unit);
@@ -1135,9 +1362,9 @@ inline void apply_weather_forecast_card_text(const WeatherForecastCardRef &ref,
 
 inline void apply_weather_forecast_to_entity(const std::string &entity_id,
                                              const std::string &day,
-                                             bool valid, int high, int low,
+                                             bool valid, float high, float low,
                                              const std::string &unit) {
-  ESP_LOGI("weather_forecast", "Applying %s forecast for %s: %s high=%d low=%d unit=%s",
+  ESP_LOGI("weather_forecast", "Applying %s forecast for %s: %s high=%.1f low=%.1f unit=%s",
     day.c_str(), entity_id.c_str(), valid ? "valid" : "unavailable",
     high, low, unit.c_str());
   WeatherForecastCardRef *refs = weather_forecast_card_refs();
@@ -1148,7 +1375,10 @@ inline void apply_weather_forecast_to_entity(const std::string &entity_id,
       refs[i].high = high;
       refs[i].low = low;
       refs[i].source_unit = unit;
+      refs[i].status_label = "";
+      apply_control_availability(refs[i].btn, refs[i].btn, valid, false);
       apply_weather_forecast_card_text(refs[i], valid, high, low, unit);
+      notify_dashboard_content_changed();
     }
   }
 }
@@ -1163,9 +1393,58 @@ inline void apply_weather_forecast_unavailable_for_entity(const std::string &ent
       refs[i].high = 0;
       refs[i].low = 0;
       refs[i].source_unit = "";
+      refs[i].status_label = "";
+      apply_control_availability(refs[i].btn, refs[i].btn, false, false);
       apply_weather_forecast_card_text(refs[i], false, 0, 0, "");
+      notify_dashboard_content_changed();
     }
   }
+}
+
+inline void apply_weather_forecast_unavailable_all() {
+  ESP_LOGW("weather_forecast", "Marking all forecast cards unavailable");
+  WeatherForecastCardRef *refs = weather_forecast_card_refs();
+  int count = weather_forecast_card_count();
+  for (int i = 0; i < count; i++) {
+    refs[i].valid = false;
+    refs[i].high = 0;
+    refs[i].low = 0;
+    refs[i].source_unit = "";
+    refs[i].status_label = "";
+    apply_control_availability(refs[i].btn, refs[i].btn, false, false);
+    apply_weather_forecast_card_text(refs[i], false, 0, 0, "");
+  }
+  if (count > 0) notify_dashboard_content_changed();
+}
+
+inline void apply_weather_forecast_actions_required_for_entity(const std::string &entity_id) {
+  ESP_LOGW("weather_forecast",
+    "Forecast request timed out for %s; check that this ESPHome device is allowed to perform Home Assistant actions",
+    entity_id.c_str());
+  WeatherForecastCardRef *refs = weather_forecast_card_refs();
+  int count = weather_forecast_card_count();
+  for (int i = 0; i < count; i++) {
+    if (refs[i].entity_id == entity_id) {
+      refs[i].valid = false;
+      refs[i].high = 0;
+      refs[i].low = 0;
+      refs[i].source_unit = "";
+      refs[i].status_label = "";
+      apply_control_availability(refs[i].btn, refs[i].btn, false, false);
+      apply_weather_forecast_card_text(refs[i], false, 0, 0, "");
+      notify_dashboard_content_changed();
+    }
+  }
+}
+
+inline bool weather_forecast_error_is_timeout(const std::string &message) {
+  std::string lower;
+  lower.reserve(message.size());
+  for (char ch : message) {
+    lower.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(ch))));
+  }
+  return lower.find("timeout") != std::string::npos ||
+         lower.find("timed out") != std::string::npos;
 }
 
 inline bool weather_forecast_request_matches(const std::string &entity_id,
@@ -1175,7 +1454,8 @@ inline bool weather_forecast_request_matches(const std::string &entity_id,
   return entity_id == other_entity_id && day == other_day;
 }
 
-inline void register_weather_forecast_card(lv_obj_t *value_lbl, lv_obj_t *unit_lbl,
+inline void register_weather_forecast_card(lv_obj_t *btn,
+                                           lv_obj_t *value_lbl, lv_obj_t *unit_lbl,
                                            lv_obj_t *label_lbl,
                                            const std::string &entity_id,
                                            const std::string &day,
@@ -1186,8 +1466,11 @@ inline void register_weather_forecast_card(lv_obj_t *value_lbl, lv_obj_t *unit_l
     return;
   }
   weather_forecast_card_refs()[count++] = {
-    value_lbl, unit_lbl, label_lbl, entity_id, day, label, false, 0, 0, ""
+    btn, value_lbl, unit_lbl, label_lbl, entity_id, day, label, "", false, 0, 0, ""
   };
+  apply_control_availability(weather_forecast_card_refs()[count - 1].btn,
+                             weather_forecast_card_refs()[count - 1].btn,
+                             false, false);
   apply_weather_forecast_card_text(weather_forecast_card_refs()[count - 1], false, 0, 0, "");
 }
 
@@ -1199,22 +1482,23 @@ inline bool weather_forecast_entity_id_safe(const std::string &entity_id) {
   return true;
 }
 
-inline bool parse_weather_forecast_temp(const std::string &value, int &out) {
+inline bool parse_weather_forecast_temp(const std::string &value, float &out) {
   if (value.empty()) return false;
   char *end = nullptr;
   float parsed = strtof(value.c_str(), &end);
   if (end == value.c_str()) return false;
-  out = static_cast<int>(parsed >= 0 ? parsed + 0.5f : parsed - 0.5f);
+  if (!std::isfinite(parsed)) return false;
+  out = parsed;
   return true;
 }
 
 struct WeatherForecastPayload {
   bool today_valid = false;
-  int today_high = WEATHER_FORECAST_TEMP_MISSING;
-  int today_low = WEATHER_FORECAST_TEMP_MISSING;
+  float today_high = WEATHER_FORECAST_TEMP_MISSING;
+  float today_low = WEATHER_FORECAST_TEMP_MISSING;
   bool tomorrow_valid = false;
-  int tomorrow_high = WEATHER_FORECAST_TEMP_MISSING;
-  int tomorrow_low = WEATHER_FORECAST_TEMP_MISSING;
+  float tomorrow_high = WEATHER_FORECAST_TEMP_MISSING;
+  float tomorrow_low = WEATHER_FORECAST_TEMP_MISSING;
   std::string unit;
 };
 
@@ -1246,29 +1530,31 @@ inline bool parse_weather_forecast_payload(const std::string &payload,
 
 inline std::string weather_forecast_response_template(const std::string &entity_id) {
   return std::string("{% set entity = '") + entity_id + "' %}"
-    "{% set entity_response = response[entity] if entity in response else none %}"
+    "{% set response_data = response if response is defined and response is not none else none %}"
+    "{% set entity_response = response_data if response_data is not none and 'forecast' in response_data else (response_data[entity] if response_data is not none and entity in response_data else none) %}"
     "{% set forecasts = entity_response['forecast'] if entity_response is not none and 'forecast' in entity_response else [] %}"
-    "{% set today_date = now().date().isoformat() %}"
-    "{% set tomorrow_date = (now().date() + timedelta(days=1)).isoformat() %}"
+    "{% set today_date = now().date() %}"
+    "{% set tomorrow_date = (now() + timedelta(days=1)).date() %}"
     "{% set ns = namespace(today=none, tomorrow=none) %}"
     "{% for item in forecasts %}"
-    "{% if 'datetime' in item and item['datetime'][:10] == today_date and ns.today is none %}"
-    "{% set ns.today = item %}{% endif %}"
-    "{% if 'datetime' in item and item['datetime'][:10] == tomorrow_date and ns.tomorrow is none %}"
-    "{% set ns.tomorrow = item %}{% endif %}"
+    "{% set item_dt = as_datetime(item['datetime']) if 'datetime' in item else none %}"
+    "{% set item_date = as_local(item_dt).date() if item_dt is not none else (as_datetime(item['date']).date() if 'date' in item else none) %}"
+    "{% if item_date == today_date and ns.today is none %}{% set ns.today = item %}{% endif %}"
+    "{% if item_date == tomorrow_date and ns.tomorrow is none %}{% set ns.tomorrow = item %}{% endif %}"
     "{% endfor %}"
     "{% set today = ns.today if ns.today is not none else (forecasts[0] if forecasts|length > 0 else none) %}"
-    "{% set tomorrow = ns.tomorrow if ns.tomorrow is not none else (forecasts[1] if forecasts|length > 1 else (forecasts[0] if forecasts|length > 0 else none)) %}"
-    "{% set today_high = today['temperature'] if today is not none and 'temperature' in today else (today['temperature_high'] if today is not none and 'temperature_high' in today else (today['high_temperature'] if today is not none and 'high_temperature' in today else (today['high'] if today is not none and 'high' in today else ''))) %}"
-    "{% set today_low = today['templow'] if today is not none and 'templow' in today else (today['temperature_low'] if today is not none and 'temperature_low' in today else (today['low_temperature'] if today is not none and 'low_temperature' in today else (today['low'] if today is not none and 'low' in today else ''))) %}"
-    "{% set tomorrow_high = tomorrow['temperature'] if tomorrow is not none and 'temperature' in tomorrow else (tomorrow['temperature_high'] if tomorrow is not none and 'temperature_high' in tomorrow else (tomorrow['high_temperature'] if tomorrow is not none and 'high_temperature' in tomorrow else (tomorrow['high'] if tomorrow is not none and 'high' in tomorrow else ''))) %}"
-    "{% set tomorrow_low = tomorrow['templow'] if tomorrow is not none and 'templow' in tomorrow else (tomorrow['temperature_low'] if tomorrow is not none and 'temperature_low' in tomorrow else (tomorrow['low_temperature'] if tomorrow is not none and 'low_temperature' in tomorrow else (tomorrow['low'] if tomorrow is not none and 'low' in tomorrow else ''))) %}"
+    "{% set tomorrow = ns.tomorrow if ns.tomorrow is not none else (forecasts[1] if forecasts|length > 1 else none) %}"
+    "{% set today_high = today['temperature'] if today is not none and 'temperature' in today else (today['native_temperature'] if today is not none and 'native_temperature' in today else (today['temperature_high'] if today is not none and 'temperature_high' in today else (today['native_temperature_high'] if today is not none and 'native_temperature_high' in today else (today['high_temperature'] if today is not none and 'high_temperature' in today else (today['max_temperature'] if today is not none and 'max_temperature' in today else (today['temperature_max'] if today is not none and 'temperature_max' in today else (today['temp_high'] if today is not none and 'temp_high' in today else (today['max_temp'] if today is not none and 'max_temp' in today else (today['high'] if today is not none and 'high' in today else ''))))))))) %}"
+    "{% set today_low = today['templow'] if today is not none and 'templow' in today else (today['native_templow'] if today is not none and 'native_templow' in today else (today['temperature_low'] if today is not none and 'temperature_low' in today else (today['native_temperature_low'] if today is not none and 'native_temperature_low' in today else (today['low_temperature'] if today is not none and 'low_temperature' in today else (today['min_temperature'] if today is not none and 'min_temperature' in today else (today['temperature_min'] if today is not none and 'temperature_min' in today else (today['temp_low'] if today is not none and 'temp_low' in today else (today['min_temp'] if today is not none and 'min_temp' in today else (today['low'] if today is not none and 'low' in today else ''))))))))) %}"
+    "{% set tomorrow_high = tomorrow['temperature'] if tomorrow is not none and 'temperature' in tomorrow else (tomorrow['native_temperature'] if tomorrow is not none and 'native_temperature' in tomorrow else (tomorrow['temperature_high'] if tomorrow is not none and 'temperature_high' in tomorrow else (tomorrow['native_temperature_high'] if tomorrow is not none and 'native_temperature_high' in tomorrow else (tomorrow['high_temperature'] if tomorrow is not none and 'high_temperature' in tomorrow else (tomorrow['max_temperature'] if tomorrow is not none and 'max_temperature' in tomorrow else (tomorrow['temperature_max'] if tomorrow is not none and 'temperature_max' in tomorrow else (tomorrow['temp_high'] if tomorrow is not none and 'temp_high' in tomorrow else (tomorrow['max_temp'] if tomorrow is not none and 'max_temp' in tomorrow else (tomorrow['high'] if tomorrow is not none and 'high' in tomorrow else ''))))))))) %}"
+    "{% set tomorrow_low = tomorrow['templow'] if tomorrow is not none and 'templow' in tomorrow else (tomorrow['native_templow'] if tomorrow is not none and 'native_templow' in tomorrow else (tomorrow['temperature_low'] if tomorrow is not none and 'temperature_low' in tomorrow else (tomorrow['native_temperature_low'] if tomorrow is not none and 'native_temperature_low' in tomorrow else (tomorrow['low_temperature'] if tomorrow is not none and 'low_temperature' in tomorrow else (tomorrow['min_temperature'] if tomorrow is not none and 'min_temperature' in tomorrow else (tomorrow['temperature_min'] if tomorrow is not none and 'temperature_min' in tomorrow else (tomorrow['temp_low'] if tomorrow is not none and 'temp_low' in tomorrow else (tomorrow['min_temp'] if tomorrow is not none and 'min_temp' in tomorrow else (tomorrow['low'] if tomorrow is not none and 'low' in tomorrow else ''))))))))) %}"
+    "{% set item_unit = today['temperature_unit'] if today is not none and 'temperature_unit' in today else (today['native_temperature_unit'] if today is not none and 'native_temperature_unit' in today else (today['unit_of_measurement'] if today is not none and 'unit_of_measurement' in today else (today['native_unit_of_measurement'] if today is not none and 'native_unit_of_measurement' in today else (today['unit'] if today is not none and 'unit' in today else (tomorrow['temperature_unit'] if tomorrow is not none and 'temperature_unit' in tomorrow else (tomorrow['native_temperature_unit'] if tomorrow is not none and 'native_temperature_unit' in tomorrow else (tomorrow['unit_of_measurement'] if tomorrow is not none and 'unit_of_measurement' in tomorrow else (tomorrow['native_unit_of_measurement'] if tomorrow is not none and 'native_unit_of_measurement' in tomorrow else (tomorrow['unit'] if tomorrow is not none and 'unit' in tomorrow else ''))))))))) %}"
     "{{ today_high }}|{{ today_low }}|{{ tomorrow_high }}|{{ tomorrow_low }}|"
-    "{{ state_attr(entity, 'temperature_unit') or '' }}";
+    "{{ entity_response['temperature_unit'] if entity_response is not none and 'temperature_unit' in entity_response else (entity_response['native_temperature_unit'] if entity_response is not none and 'native_temperature_unit' in entity_response else (entity_response['unit_of_measurement'] if entity_response is not none and 'unit_of_measurement' in entity_response else (entity_response['native_unit_of_measurement'] if entity_response is not none and 'native_unit_of_measurement' in entity_response else (entity_response['unit'] if entity_response is not none and 'unit' in entity_response else (item_unit or state_attr(entity, 'temperature_unit') or state_attr(entity, 'native_temperature_unit') or state_attr(entity, 'unit_of_measurement') or ''))))) }}";
 }
 
 inline uint32_t next_weather_forecast_call_id() {
-  static uint32_t call_id = 100000;
+  static uint32_t call_id = 1;
   return call_id++;
 }
 
@@ -1285,6 +1571,27 @@ inline WeatherForecastQueuedRequest *weather_forecast_queued_requests() {
 inline WeatherForecastRetryRequest *weather_forecast_retry_requests() {
   static WeatherForecastRetryRequest requests[WEATHER_FORECAST_PENDING_MAX];
   return requests;
+}
+
+inline uint32_t &weather_forecast_action_ready_ms() {
+  static uint32_t due_ms = 0;
+  return due_ms;
+}
+
+inline bool weather_forecast_actions_ready() {
+  if (!ha_api_state_connected()) {
+    weather_forecast_action_ready_ms() = 0;
+    return false;
+  }
+  uint32_t &due_ms = weather_forecast_action_ready_ms();
+  uint32_t now = esphome::millis();
+  if (due_ms == 0) {
+    due_ms = now + 10000;
+    ESP_LOGI("weather_forecast",
+      "Waiting 10 seconds for Home Assistant action subscription before requesting forecasts");
+    return false;
+  }
+  return (int32_t) (now - due_ms) >= 0;
 }
 
 inline bool weather_forecast_pending_key(const std::string &entity_id,
@@ -1463,6 +1770,7 @@ inline bool weather_forecast_enqueue_due_retries() {
 inline void weather_forecast_send_next_queued();
 
 inline void weather_forecast_cancel_pending_requests() {
+  weather_forecast_action_ready_ms() = 0;
   weather_forecast_clear_queue();
   weather_forecast_clear_retries();
   WeatherForecastPendingRequest *requests = weather_forecast_pending_requests();
@@ -1493,7 +1801,9 @@ inline bool weather_forecast_cancel_stale_requests() {
 
 inline void request_weather_forecast_entity(const std::string &entity_id,
                                             const std::string &day) {
-  if (!weather_forecast_entity_id_safe(entity_id) || !ha_api_state_connected()) {
+  if (!weather_forecast_entity_id_safe(entity_id) ||
+      !ha_api_state_connected() ||
+      !weather_forecast_actions_ready()) {
     apply_weather_forecast_unavailable_for_entity(entity_id);
     return;
   }
@@ -1510,16 +1820,26 @@ inline void request_weather_forecast_entity(const std::string &entity_id,
   req.response_template = decltype(req.response_template)(response_template);
   ha_action_add_entity(req, entity_id);
   ha_action_add_data(req, "type", "daily");
+  uint32_t generation = ha_subscription_generation();
 
   if (!ha_register_action_response_callback(
     req.call_id,
-    [entity_id, day, call_id = req.call_id](const esphome::api::ActionResponse &response) {
+    [entity_id, day, call_id = req.call_id, generation](const esphome::api::ActionResponse &response) {
       weather_forecast_clear_pending(call_id);
+      if (generation != ha_subscription_generation()) {
+        weather_forecast_send_next_queued();
+        return;
+      }
       if (!response.is_success()) {
+        std::string error_message = response.get_error_message();
         ESP_LOGW("weather_forecast", "Forecast request failed for %s: %s",
-          entity_id.c_str(), response.get_error_message().c_str());
-        apply_weather_forecast_unavailable_for_entity(entity_id);
-        weather_forecast_schedule_retry(entity_id, day, response.get_error_message().c_str());
+          entity_id.c_str(), error_message.c_str());
+        if (weather_forecast_error_is_timeout(error_message)) {
+          apply_weather_forecast_actions_required_for_entity(entity_id);
+        } else {
+          apply_weather_forecast_unavailable_for_entity(entity_id);
+        }
+        weather_forecast_schedule_retry(entity_id, day, error_message.c_str());
         weather_forecast_send_next_queued();
         return;
       }
@@ -1538,6 +1858,7 @@ inline void request_weather_forecast_entity(const std::string &entity_id,
       if (!valid) {
         ESP_LOGW("weather_forecast", "No usable forecast temperatures for %s: %s",
           entity_id.c_str(), payload);
+        weather_forecast_schedule_retry(entity_id, day, "no usable forecast temperatures");
       }
       apply_weather_forecast_to_entity(entity_id, "today", forecast.today_valid,
         forecast.today_high, forecast.today_low, forecast.unit);
@@ -1558,12 +1879,14 @@ inline void request_weather_forecast_entity(const std::string &entity_id,
   if (!ha_action_send(req)) {
     weather_forecast_clear_pending(req.call_id);
     ha_cancel_action_response_callback(req.call_id, "send failed");
+    apply_weather_forecast_unavailable_for_entity(entity_id);
+    weather_forecast_schedule_retry(entity_id, day, "send failed");
     weather_forecast_send_next_queued();
   }
 }
 
 inline void weather_forecast_send_next_queued() {
-  if (!ha_api_state_connected() || weather_forecast_any_pending()) return;
+  if (!weather_forecast_actions_ready() || weather_forecast_any_pending()) return;
   weather_forecast_enqueue_due_retries();
   std::string entity_id;
   std::string day;
@@ -1615,6 +1938,7 @@ inline void refresh_temperature_unit_labels() {
     climate_update_card(climate_refs[i]);
     climate_control_set_modal_value(climate_refs[i]);
   }
+  if (weather_count > 0 || climate_count > 0) notify_dashboard_content_changed();
 }
 
 inline const char* garage_closed_icon(const std::string &icon) {
@@ -1636,9 +1960,9 @@ inline const char *garage_command_icon(const ParsedCfg &p) {
 
 inline const char *garage_card_label(const ParsedCfg &p) {
   if (!p.label.empty()) return p.label.c_str();
-  if (p.sensor == "open") return "Open";
-  if (p.sensor == "close") return "Close";
-  return "Garage Door";
+  if (p.sensor == "open") return espcontrol_i18n("Open");
+  if (p.sensor == "close") return espcontrol_i18n("Close");
+  return espcontrol_i18n("Garage Door");
 }
 
 inline bool garage_card_show_status(const ParsedCfg &p) {
@@ -1673,9 +1997,9 @@ inline const char *lock_command_icon(const ParsedCfg &p) {
 
 inline const char *lock_card_label(const ParsedCfg &p) {
   if (!p.label.empty()) return p.label.c_str();
-  if (p.sensor == "lock") return "Lock";
-  if (p.sensor == "unlock") return "Unlock";
-  return "Lock";
+  if (p.sensor == "lock") return espcontrol_i18n("Lock");
+  if (p.sensor == "unlock") return espcontrol_i18n("Unlock");
+  return espcontrol_i18n("Lock");
 }
 
 // ── Internal relay controls ───────────────────────────────────────────
@@ -1772,7 +2096,7 @@ inline std::string internal_relay_label(const ParsedCfg &p) {
   if (!p.label.empty()) return p.label;
   InternalRelayControl *relay = find_internal_relay(p.entity);
   if (relay && !relay->label.empty()) return relay->label;
-  return p.entity.empty() ? std::string("Relay") : sentence_cap_text(p.entity);
+  return p.entity.empty() ? espcontrol_i18n(std::string("Relay")) : sentence_cap_text(p.entity);
 }
 
 inline const char *internal_relay_icon(const ParsedCfg &p, bool push_mode) {
@@ -1784,8 +2108,7 @@ inline void apply_internal_relay_state(lv_obj_t *btn, lv_obj_t *icon_lbl,
                                        bool on, bool has_icon_on,
                                        const char *icon_off, const char *icon_on) {
   if (btn) {
-    if (on) lv_obj_add_state(btn, LV_STATE_CHECKED);
-    else lv_obj_clear_state(btn, LV_STATE_CHECKED);
+    set_card_checked_state(btn, on);
   }
   if (icon_lbl && has_icon_on)
     lv_label_set_text(icon_lbl, on ? icon_on : icon_off);
@@ -1801,11 +2124,11 @@ inline void apply_internal_relay_parent_indicator(InternalRelayWatcher &w, bool 
     *w.child_was_on = false;
   }
   if (w.sp_on_count[w.parent_idx] > 0) {
-    lv_obj_add_state(w.parent_btn, LV_STATE_CHECKED);
+    set_card_checked_state(w.parent_btn, true);
     if (w.parent_has_alt_icon && w.parent_icon)
       lv_label_set_text(w.parent_icon, w.parent_on_glyph);
   } else {
-    lv_obj_clear_state(w.parent_btn, LV_STATE_CHECKED);
+    set_card_checked_state(w.parent_btn, false);
     if (w.parent_has_alt_icon && w.parent_icon)
       lv_label_set_text(w.parent_icon, w.parent_off_glyph);
   }

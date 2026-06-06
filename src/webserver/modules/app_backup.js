@@ -16,23 +16,37 @@ function exportConfig() {
     settings: {
       indoor_temp_enable: state._indoorOn,
       outdoor_temp_enable: state._outdoorOn,
+      clock_bar_temperature_entities: serializeClockBarTemperatureEntities(clockBarTemperatureEntities()),
+      theme: normalizeTheme(state.theme),
       indoor_temp_entity: state.indoorEntity,
       outdoor_temp_entity: state.outdoorEntity,
       temperature_unit: normalizeTemperatureUnit(state.temperatureUnit),
       clock_bar: state.clockBarOn,
+      clock_bar_layout: serializeClockBarLayout(state.clockBarLayout),
+      clock_bar_time: state.clockBarTimeOn,
+      clock_bar_weather_icon: state.clockBarWeatherOn,
+      clock_bar_weather_entity: state.clockBarWeatherEntity,
       network_status_icon: state.networkStatusOn,
       temperature_degree_symbol: state.temperatureDegreeSymbolOn,
       subpage_chevron: state.subpageChevronsOn,
       timezone: state.timezone,
+      language: normalizeLanguage(state.language),
       clock_format: state.clockFormat,
       ntp_server_1: state.ntpServer1,
       ntp_server_2: state.ntpServer2,
       ntp_server_3: state.ntpServer3,
-      month_names: serializeMonthNames(state.monthNames),
       screensaver_mode: getActiveScreensaverMode(),
       presence_sensor_entity: state.presenceEntity,
       media_player_sleep_prevention: state.mediaPlayerSleepPreventionOn,
       media_player_sleep_prevention_entity: state.mediaPlayerSleepPreventionEntity,
+      cover_art_screensaver: state.coverArtScreensaverOn,
+      cover_art_media_player_entity: state.coverArtMediaPlayerEntity,
+      cover_art_home_assistant_url: state.coverArtHomeAssistantUrl,
+      cover_art_delay: state.coverArtDelay,
+      cover_art_track_overlay_duration: state.coverArtTrackOverlayDuration,
+      cover_art_progress_bar: state.coverArtProgressBarOn,
+      cover_art_open_media_subpage: state.coverArtOpenMediaSubpageOn,
+      cover_art_media_subpage_target: state.coverArtMediaSubpageTarget,
       screensaver_action: normalizeScreensaverAction(state.screensaverAction),
       clock_screensaver: state.clockScreensaverOn,
       clock_brightness: state.clockBrightnessDay,
@@ -150,6 +164,8 @@ function importConfig() {
         var s = backupPlan.settings;
         var importedSettings = EspControlModel.normalizeBackupPanelSettings(s, {
           timezone: state.timezone,
+          language: state.language,
+          clockBarLayout: serializeClockBarLayout(state.clockBarLayout),
           clockFormat: state.clockFormat,
           clockFormatOptions: state.clockFormatOptions,
           developerExperimentalFeatures: state.developerExperimentalFeatures,
@@ -157,32 +173,35 @@ function importConfig() {
           ntpServer1: state.ntpServer1,
           ntpServer2: state.ntpServer2,
           ntpServer3: state.ntpServer3,
-          monthNames: state.monthNames,
           screenRotationOptions: allScreenRotationOptions(),
         });
 
-        postSwitch(entityName("indoor_temp_enable"), importedSettings.indoorTempEnable);
-        postSwitch(entityName("outdoor_temp_enable"), importedSettings.outdoorTempEnable);
-        postText(entityName("indoor_temp_entity"), importedSettings.indoorTempEntity);
-        postText(entityName("outdoor_temp_entity"), importedSettings.outdoorTempEntity);
+        applyClockBarTemperatureEntities(importedSettings.clockBarTemperatureEntities, true);
         postClockBar(importedSettings.clockBar);
+        applyClockBarLayoutValue(importedSettings.clockBarLayout);
+        postClockBarLayout(importedSettings.clockBarLayout);
+        postClockBarTime(importedSettings.clockBarTime);
+        postClockBarWeatherIcon(importedSettings.clockBarWeatherIcon);
+        postText(entityName("clock_bar_weather_entity"), importedSettings.clockBarWeatherEntity);
         postNetworkStatusIcon(importedSettings.networkStatusIcon);
         postTemperatureDegreeSymbol(importedSettings.temperatureDegreeSymbol);
         postSubpageChevron(importedSettings.subpageChevron);
         var importedTimezone = importedSettings.timezone;
+        var importedTheme = normalizeTheme(s.theme || state.theme);
         var importedTemperatureUnit = importedSettings.temperatureUnit;
+        var importedLanguage = importedSettings.language;
         var importedClockFormat = importedSettings.clockFormat;
         var hasNtpServer1 = importedSettings.hasNtpServer1;
         var hasNtpServer2 = importedSettings.hasNtpServer2;
         var hasNtpServer3 = importedSettings.hasNtpServer3;
-        var hasMonthNames = importedSettings.hasMonthNames;
         var hasDeveloperExperimentalFeatures = importedSettings.hasDeveloperExperimentalFeatures;
         var importedDeveloperExperimentalFeatures = importedSettings.developerExperimentalFeatures;
         var importedNtpServer1 = importedSettings.ntpServer1;
         var importedNtpServer2 = importedSettings.ntpServer2;
         var importedNtpServer3 = importedSettings.ntpServer3;
-        var importedMonthNames = importedSettings.monthNames;
         if (s.timezone) postSelect(entityName("screen_timezone"), importedTimezone);
+        if (s.language) postSelect(entityName("screen_language"), importedLanguage);
+        if (s.theme && isEpaperPreview()) postSelect(entityName("screen_theme"), importedTheme);
         postSelect(entityName("screen_temperature_unit"), importedTemperatureUnit);
         if (s.clock_format) postSelect(entityName("screen_clock_format"), importedClockFormat);
         if (hasNtpServer1) {
@@ -194,14 +213,19 @@ function importConfig() {
         if (hasNtpServer3) {
           postText(entityName("screen_ntp_server_3"), importedNtpServer3);
         }
-        if (hasMonthNames) {
-          postText(entityName("screen_month_names"), serializeMonthNames(importedMonthNames));
-        }
         var importedScreensaverMode = importedSettings.screensaverMode;
         postText(entityName("screensaver_mode"), importedScreensaverMode);
         postText(entityName("presence_sensor_entity"), importedSettings.presenceSensorEntity);
         postSwitch(entityName("screen_saver_media_player_sleep_prevention"), importedSettings.mediaPlayerSleepPrevention);
         postText(entityName("media_player_sleep_prevention_entity"), importedSettings.mediaPlayerSleepPreventionEntity);
+        postSwitch(entityName("screen_saver_cover_art"), importedSettings.coverArtScreensaver);
+        postText(entityName("screen_saver_cover_art_entity"), importedSettings.coverArtMediaPlayerEntity);
+        postText(entityName("screen_saver_cover_art_ha_url"), importedSettings.coverArtHomeAssistantUrl);
+        postNumber(entityName("screen_saver_cover_art_delay"), importedSettings.coverArtDelay);
+        postNumber(entityName("screen_saver_track_overlay_duration"), importedSettings.coverArtTrackOverlayDuration);
+        postSwitch(entityName("screen_saver_cover_art_progress_bar"), importedSettings.coverArtProgressBar);
+        postSwitch(entityName("screen_saver_open_media_subpage"), importedSettings.coverArtOpenMediaSubpage);
+        postText(entityName("screen_saver_media_subpage"), importedSettings.coverArtMediaSubpageTarget);
         var importedScreensaverAction = importedSettings.screensaverAction;
         var importedScreensaverDimmedBrightness = importedSettings.screensaverDimmedBrightness;
         var importedClockBrightnessDay = importedSettings.clockBrightnessDay;
@@ -218,28 +242,41 @@ function importConfig() {
         if (hasDeveloperExperimentalFeatures) {
           postDeveloperExperimentalFeatures(importedDeveloperExperimentalFeatures);
         }
+        state.clockBarTemperatureEntities = importedSettings.clockBarTemperatureEntities;
+        state._clockBarTemperatureEntitiesReceived = true;
         state._indoorOn = importedSettings.indoorTempEnable;
         state._outdoorOn = importedSettings.outdoorTempEnable;
         state.indoorEntity = importedSettings.indoorTempEntity;
         state.outdoorEntity = importedSettings.outdoorTempEntity;
         state.temperatureUnit = importedTemperatureUnit;
         state.clockBarOn = importedSettings.clockBar;
+        state.clockBarTimeOn = importedSettings.clockBarTime;
+        state.clockBarWeatherOn = importedSettings.clockBarWeatherIcon;
+        state.clockBarWeatherEntity = importedSettings.clockBarWeatherEntity;
         state.networkStatusOn = importedSettings.networkStatusIcon;
         state.temperatureDegreeSymbolOn = importedSettings.temperatureDegreeSymbol;
         state.subpageChevronsOn = importedSettings.subpageChevron;
         state.timezone = importedTimezone;
+        state.language = importedLanguage;
+        state.theme = importedTheme;
         state.clockFormat = importedClockFormat;
         state.ntpServer1 = importedNtpServer1;
         state.ntpServer2 = importedNtpServer2;
         state.ntpServer3 = importedNtpServer3;
-        state.monthNames = importedMonthNames;
-        state.customMonthNames = hasCustomMonthNames();
         state.customNtpServers = hasCustomNtpServers();
         state.screensaverMode = importedScreensaverMode;
         state._screensaverModeReceived = true;
         state.presenceEntity = importedSettings.presenceSensorEntity;
         state.mediaPlayerSleepPreventionOn = importedSettings.mediaPlayerSleepPrevention;
         state.mediaPlayerSleepPreventionEntity = importedSettings.mediaPlayerSleepPreventionEntity;
+        state.coverArtScreensaverOn = importedSettings.coverArtScreensaver;
+        state.coverArtMediaPlayerEntity = importedSettings.coverArtMediaPlayerEntity;
+        state.coverArtHomeAssistantUrl = importedSettings.coverArtHomeAssistantUrl;
+        state.coverArtDelay = importedSettings.coverArtDelay;
+        state.coverArtTrackOverlayDuration = importedSettings.coverArtTrackOverlayDuration;
+        state.coverArtProgressBarOn = importedSettings.coverArtProgressBar;
+        state.coverArtOpenMediaSubpageOn = importedSettings.coverArtOpenMediaSubpage;
+        state.coverArtMediaSubpageTarget = importedSettings.coverArtMediaSubpageTarget || "";
         state.screensaverAction = importedScreensaverAction;
         state._screensaverActionReceived = true;
         state.clockScreensaverOn = importedScreensaverAction === "clock";
@@ -255,16 +292,18 @@ function importConfig() {
 
         syncTemperatureUi();
         syncClockBarUi();
-        syncInput(els.setIndoorEntity, state.indoorEntity);
-        syncInput(els.setOutdoorEntity, state.outdoorEntity);
         if (els.setTemperatureUnit) els.setTemperatureUnit.value = state.temperatureUnit;
         syncInput(els.setPresence, state.presenceEntity);
         syncInput(els.setMediaPlayerSleepPrevention, state.mediaPlayerSleepPreventionEntity);
         syncMediaPlayerSleepPreventionUi();
+        syncInput(els.setCoverArtMediaPlayer, state.coverArtMediaPlayerEntity);
+        syncInput(els.setCoverArtHomeAssistantUrl, state.coverArtHomeAssistantUrl);
+        syncCoverArtScreensaverUi();
+        syncThemeUi();
         if (els.setTimezone) els.setTimezone.value = state.timezone;
+        syncLanguageSelect();
         if (els.setClockFormat) els.setClockFormat.value = state.clockFormat;
         syncNtpServerUi();
-        syncMonthNameUi();
         syncClockScreensaverControls();
         syncScreensaverTimeoutUi();
         syncIdleUi();

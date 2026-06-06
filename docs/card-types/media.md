@@ -60,5 +60,5 @@ You can choose optional controls:
 Now Playing works best on wider or larger cards because it has more room for track text.
 
 ::: info Requires Home Assistant actions
-Media cards send Home Assistant actions from the panel. If tapping a card does nothing, check [Home Assistant Actions](/getting-started/home-assistant-actions).
+Media cards send Home Assistant actions from the panel. If tapping a card does nothing, check [Enable Actions](/getting-started/home-assistant-actions).
 :::

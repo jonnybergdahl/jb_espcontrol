@@ -1,0 +1,10 @@
+.VPSidebarItem .text .sidebar-static-header {
+  display: block;
+  margin-top: 18px;
+  color: var(--vp-c-text-3);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 20px;
+  text-transform: uppercase;
+}

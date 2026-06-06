@@ -12,11 +12,11 @@ esphome:
     then:
       - lambda: |-
           const char *posix = apply_timezone(id(timezone_select).current_option());
+          set_espcontrol_language(id(language_select).current_option());
           id(panel_time).set_timezone(posix);
           id(homeassistant_time).set_timezone(posix);
           set_display_temperature_unit(id(temperature_unit_select).current_option(),
                                        id(timezone_select).current_option());
-          set_calendar_month_names(id(calendar_month_names).state);
       - script.execute: ntp_servers_apply
 
 # Ask Home Assistant for time once the native API has finished state setup. This
@@ -186,8 +186,10 @@ select:
             set_display_temperature_unit(id(temperature_unit_select).current_option(),
                                          id(timezone_select).current_option());
             refresh_temperature_unit_labels();
-            refresh_temp_label_values(id(temperatures), id(main_page)->obj,
-                                      id(clock_bar_enabled).state,
+            refresh_clock_bar_temperature_label_values(id(main_page)->obj,
+                                                      id(clock_bar_enabled).state &&
+                                        !id(is_clock_showing) &&
+                                        !id(cover_art_screensaver_active),
                                       id(indoor_temp_enable).state,
                                       id(outdoor_temp_enable).state,
                                       id(indoor_temp), id(outdoor_temp));
@@ -214,6 +216,47 @@ select:
       then:
         - script.execute: time_update
         - script.execute: backlight_recalc_sunrise_sunset
+
+  - platform: template
+    name: "${entity_screen_language}"
+    internal: true
+    disabled_by_default: true
+    id: language_select
+    entity_category: config
+    icon: "mdi:translate"
+    optimistic: true
+    restore_value: true
+    initial_option: "en"
+    options:
+      - "en"
+      - "cs"
+      - "da"
+      - "de"
+      - "es"
+      - "fi"
+      - "fr"
+      - "hu"
+      - "it"
+      - "nb"
+      - "nl"
+      - "pl"
+      - "pt"
+      - "pt-br"
+      - "ro"
+      - "sk"
+      - "sl"
+      - "sv"
+      - "tr"
+      - "uk"
+    web_server:
+      sorting_group_id: sg_brightness
+    on_value:
+      then:
+        - lambda: |-
+            set_espcontrol_language(id(language_select).current_option());
+            refresh_calendar_cards();
+        - script.execute: refresh_button_grid
+        - script.execute: network_status_refresh
 
 # ---------------------------------------------------------------------------
 # NTP server settings and date source for Date cards
@@ -275,26 +318,6 @@ text:
     on_value:
       then:
         - script.execute: ntp_servers_apply
-
-  - platform: template
-    name: "${entity_screen_month_names}"
-    internal: true
-    id: calendar_month_names
-    optimistic: true
-    restore_value: true
-    initial_value: "January,February,March,April,May,June,July,August,September,October,November,December"
-    min_length: 0
-    max_length: 255
-    mode: text
-    entity_category: config
-    icon: "mdi:calendar-text"
-    update_interval: never
-    web_server:
-      sorting_group_id: sg_brightness
-    on_value:
-      then:
-        - lambda: |-
-            set_calendar_month_names(x);
 
 text_sensor:
   # Diagnostic value published from the active time source. This makes

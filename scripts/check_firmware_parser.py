@@ -42,6 +42,9 @@ class StringRef {
 struct lv_obj_t {};
 using lv_coord_t = int;
 using lv_style_selector_t = int;
+using lv_color_t = int;
+inline const char *espcontrol_i18n(const char *text) { return text ? text : ""; }
+inline std::string espcontrol_i18n(const std::string &text) { return text; }
 constexpr int LV_PART_MAIN = 0;
 constexpr int LV_STATE_CHECKED = 1;
 constexpr int LV_STATE_PRESSED = 2;
@@ -54,23 +57,32 @@ constexpr int LV_OPA_COVER = 255;
 constexpr int LV_OPA_50 = 128;
 constexpr int LV_OBJ_FLAG_CLICKABLE = 1;
 constexpr int LV_OBJ_FLAG_HIDDEN = 2;
+constexpr int LV_GRAD_DIR_HOR = 1;
 inline int lv_color_hex(uint32_t value) { return static_cast<int>(value); }
 inline int lv_pct(int value) { return value; }
 inline void lv_obj_set_style_transform_scale_x(lv_obj_t *, int, int) {}
 inline void lv_obj_set_style_transform_scale_y(lv_obj_t *, int, int) {}
 inline void lv_obj_set_style_bg_color(lv_obj_t *, int, lv_style_selector_t) {}
+inline void lv_obj_set_style_bg_grad_color(lv_obj_t *, lv_color_t, lv_style_selector_t) {}
+inline void lv_obj_set_style_bg_grad_dir(lv_obj_t *, int, lv_style_selector_t) {}
+inline void lv_obj_set_style_text_color(lv_obj_t *, lv_color_t, lv_style_selector_t) {}
+inline lv_color_t lv_obj_get_style_text_color(lv_obj_t *, lv_style_selector_t) { return 0; }
 inline void lv_obj_set_style_opa(lv_obj_t *, int, int) {}
 inline void lv_obj_set_style_text_opa(lv_obj_t *, int, int) {}
 inline void lv_obj_add_state(lv_obj_t *, int) {}
 inline void lv_obj_clear_state(lv_obj_t *, int) {}
+inline bool lv_obj_has_state(lv_obj_t *, int) { return false; }
 inline void lv_obj_add_flag(lv_obj_t *, int) {}
 inline void lv_obj_clear_flag(lv_obj_t *, int) {}
+inline uint32_t lv_obj_get_child_cnt(lv_obj_t *) { return 0; }
+inline lv_obj_t *lv_obj_get_child(lv_obj_t *, uint32_t) { return nullptr; }
 inline void lv_label_set_long_mode(lv_obj_t *, int) {}
 inline void lv_obj_set_width(lv_obj_t *, int) {}
 inline void lv_label_set_text(lv_obj_t *, const char *) {}
 inline void lv_obj_align(lv_obj_t *, int, int, int) {}
 inline void lv_obj_move_foreground(lv_obj_t *) {}
 
+#include "temperature_unit.h"
 #include "button_grid_config_pure.h"
 #include "button_grid_layout.h"
 
@@ -93,6 +105,9 @@ int main() {
   assert(sensor_state_display_text(state_labels, "high") == "Please empty");
   assert(sensor_state_display_text(state_labels, "High") == "Please empty");
   assert(sensor_state_display_text(state_labels, "medium") == "Medium");
+  assert(sensor_state_display_text(state_labels, "medium-high") == "Medium-High");
+  assert(text_sensor_display_text("pre-wash") == "Pre-Wash");
+  assert(text_sensor_display_text("pre_wash") == "Pre Wash");
   auto legacy_state_labels = parse_cfg(";;;;sensor.bin_level;;sensor;text;state_labels,state_high_label=Please%20empty");
   assert(legacy_state_labels.options == "state_labels,state_input=high,state_output=Please empty");
   auto numeric_state_labels = parse_cfg(";;;;sensor.bin_level;;sensor;0;state_labels,state_high_label=Please%20empty");
@@ -106,6 +121,32 @@ int main() {
   assert(clock.type == "clock");
   assert(clock.options == "large_numbers");
   assert(card_large_numbers_enabled(clock));
+
+  auto weather_today = parse_cfg("weather.home;;;;;;weather;today;large_numbers");
+  assert(weather_today.type == "weather");
+  assert(weather_today.precision == "today");
+  assert(weather_today.options == "large_numbers");
+  assert(card_large_numbers_enabled(weather_today));
+  auto weather_invalid_mode = parse_cfg("weather.home;;;;;;weather;bad;large_numbers");
+  assert(weather_invalid_mode.type == "weather");
+  assert(weather_invalid_mode.precision == "");
+  assert(weather_invalid_mode.options == "");
+  assert(!card_large_numbers_enabled(weather_invalid_mode));
+  auto legacy_weather_forecast = parse_cfg("weather.home;Weather;Auto;Auto;;;weather_forecast");
+  assert(legacy_weather_forecast.type == "weather");
+  assert(legacy_weather_forecast.precision == "tomorrow");
+  assert(legacy_weather_forecast.label == "");
+  set_display_temperature_unit("\u00B0F", "UTC (GMT+0)");
+  assert(convert_temperature_value_for_display(10, "\u00B0C") == 50);
+  assert(convert_temperature_value_for_display(10, "\u00B0F") == 10);
+  assert(convert_temperature_value_for_display_float(10.4f, "\u00B0C") > 50.7f);
+  assert(convert_temperature_value_for_display_float(10.4f, "\u00B0C") < 50.8f);
+  assert(convert_temperature_value_for_display(50, "\u00B0F") == 50);
+  set_display_temperature_unit("\u00B0C", "UTC (GMT+0)");
+  assert(convert_temperature_value_for_display(50, "\u00B0F") == 10);
+  assert(convert_temperature_value_for_display_float(50.7f, "\u00B0F") > 10.3f);
+  assert(convert_temperature_value_for_display_float(50.7f, "\u00B0F") < 10.4f);
+  assert(convert_temperature_value_for_display(10, "\u00B0C") == 10);
 
   auto migrated = parse_cfg("media_player.living:Living:Speaker:Auto:controls::media");
   assert(migrated.type.empty());
@@ -272,6 +313,7 @@ def main() -> int:
     with TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         (tmp_path / "button_grid_config_pure.h").write_text(pure_config_header(), encoding="utf-8")
+        shutil.copy2(ROOT / "components" / "espcontrol" / "temperature_unit.h", tmp_path / "temperature_unit.h")
         shutil.copy2(CONTRACT_HEADER, tmp_path / "button_grid_contract_generated.h")
         shutil.copy2(CARD_RUNTIME_HEADER, tmp_path / "button_grid_card_runtime.h")
         shutil.copy2(LAYOUT_HEADER, tmp_path / "button_grid_layout.h")

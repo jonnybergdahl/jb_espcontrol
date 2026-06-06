@@ -99,5 +99,5 @@ Use the dedicated card types for richer controls:
 - Use [Climate](/card-types/climate) for thermostat and HVAC controls.
 
 ::: info Requires Home Assistant actions
-Action cards send Home Assistant actions from the panel. If tapping a card does nothing, check [Home Assistant Actions](/getting-started/home-assistant-actions).
+Action cards send Home Assistant actions from the panel. If tapping a card does nothing, check [Enable Actions](/getting-started/home-assistant-actions).
 :::

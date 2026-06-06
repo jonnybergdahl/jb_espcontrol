@@ -22,6 +22,7 @@ static const IconEntry ICON_ENTRIES[] = {
     {"Air Filter",                 "\U000F0D43"},
     {"Air Purifier",               "\U000F0D44"},
     {"Air Purifier Off",           "\U000F1B57"},
+    {"Airplane",                   "\U000F001D"},
     {"Alarm",                      "\U000F009E"},
     {"Alarm Light",                "\U000F078F"},
     {"Application",                "\U000F0614"},

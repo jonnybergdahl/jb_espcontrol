@@ -10,6 +10,7 @@ struct DisplayFontRoles {
   const lv_font_t *sensor = nullptr;
   const lv_font_t *large_sensor = nullptr;
   const lv_font_t *media_title = nullptr;
+  const lv_font_t *option_select_value = nullptr;
   const lv_font_t *volume_number = nullptr;
   const lv_font_t *volume_label = nullptr;
   const lv_font_t *climate_card_icon = nullptr;
@@ -110,6 +111,12 @@ inline const lv_font_t *display_media_title_font_or(
   return profile.fonts.media_title ? profile.fonts.media_title : fallback;
 }
 
+inline const lv_font_t *display_option_select_value_font_or(
+    const DisplayProfile &profile, const lv_font_t *fallback) {
+  if (profile.fonts.option_select_value) return profile.fonts.option_select_value;
+  return display_media_title_font_or(profile, fallback);
+}
+
 inline const lv_font_t *display_switch_confirmation_message_font(const DisplayProfile &profile) {
   return profile.fonts.media_title ? profile.fonts.media_title : profile.fonts.volume_label;
 }
@@ -151,4 +158,8 @@ inline bool display_modal_is_square_size(lv_coord_t width, lv_coord_t height) {
 
 inline bool display_modal_is_4848_size(lv_coord_t width, lv_coord_t height) {
   return width == 480 && height == 480;
+}
+
+inline bool display_modal_is_large_landscape_size(lv_coord_t width, lv_coord_t height) {
+  return (width == 1280 && height == 800) || (width == 800 && height == 1280);
 }

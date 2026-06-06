@@ -48,22 +48,23 @@ export {
   parseCompactSubpageConfig,
   parseLegacySubpageConfig,
   parseRawSubpageConfig,
+  parseStructuredSubpageConfig,
   parseSubpageOrder,
   serializeCompactSubpageConfig,
   serializeLegacySubpageConfig,
   serializeSubpageGrid,
   splitSubpageConfigChunks,
+  structuredSubpageFromParsed,
   subpageOrderForSerialize,
 } from "./subpage";
 
 export {
-  MONTH_NAME_DEFAULTS,
   normalizeBackupPanelSettings,
   normalizeBackupScreenSettings,
   normalizeClockBrightness,
   normalizeHexColor,
   normalizeHour,
-  normalizeMonthNames,
+  normalizeLanguage,
   normalizeNtpServer,
   normalizeScheduleClockBrightness,
   normalizeScheduleDimmedBrightness,
@@ -75,7 +76,6 @@ export {
   normalizeTemperatureUnit,
   scheduleModeOption,
   screensaverActionOption,
-  serializeMonthNames,
 } from "./settings";
 
 export type {
@@ -107,5 +107,6 @@ export type {
   BackOrderToken,
   ParsedSubpageConfig,
   ParsedSubpageOrder,
+  StructuredSubpageConfig,
   SubpageGridSource,
 } from "./subpage";

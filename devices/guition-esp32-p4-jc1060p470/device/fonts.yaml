@@ -1,65 +1,109 @@
 # =============================================================================
-# FONTS (DEVICE OVERRIDE) - Font variants for the 1060x470 display
+# FONTS - Generic style IDs for the 1060x470 display
 # =============================================================================
-# Supplements the common fonts with device-specific variants for the main UI.
-# The common fonts (label_font, clockbar_font, setup fonts, etc.) still load
-# for shared UI areas; this file only keeps 1060x470-specific font sizes.
+# Feature YAML should reference these functional style IDs, not physical font
+# names or sizes. Sizes remain device-specific behind the same style names.
 # =============================================================================
 
 font:
-  # Main page icons: 44px on the 480px S3 reference scaled to this 600px short side
+  # Main action/setup icons
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
-    id: font_mdi_55_icons
+    id: font_icon_main
     size: 55
     bpp: 4
     glyphs: !include ../../../common/assets/icon_glyphs.yaml
 
-  # Climate card icons (25% smaller than main page icons)
+  # Smaller card icons
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
-    id: font_mdi_41_icons
+    id: font_icon_card
     size: 41
     bpp: 4
     glyphs: !include ../../../common/assets/icon_glyphs.yaml
 
-  # Main page: large statistics / sensor values, 15% larger than the shared 48px font
-  - file: "gfonts://Roboto@Light"
-    id: font_roboto_light_55_digits
-    size: 55
-    bpp: 4
-    glyphs:
-      - "0123456789.-°/%"
-      - ":"
-
-  # Main page: large-card sensor values (2.5x the regular sensor value font)
-  - file: "gfonts://Roboto@Thin"
-    id: font_roboto_thin_138_digits
-    size: 138
-    bpp: 4
-    glyphs:
-      - "0123456789.-°/%"
-      - ":"
-
-  # Top bar network status icon
+  # Status, network, and subpage icons
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
-    id: font_mdi_19_network
+    id: font_icon_status
     size: 19
     bpp: 4
     glyphs: !include ../../../common/assets/network_status_glyphs.yaml
 
-  # Volume/climate modal: 96px on the 480px S3 reference scaled to this 600px short side
-  - file: "gfonts://Roboto@Thin"
-    id: font_roboto_thin_120_text
-    size: 120
+  # Main labels and setup body text
+  - file: "gfonts://Roboto"
+    id: font_text_body
+    size: 22
+    bpp: 4
+    glyphs: !include ../../../common/assets/text_glyphs.yaml
+    extras:
+      - file: "gfonts://Heebo"
+        glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
+
+  # Headings and media titles
+  - file: "gfonts://Roboto@Light"
+    id: font_text_title
+    size: 43
     bpp: 4
     glyphs: !include ../../../common/assets/text_glyphs.yaml
     extras:
       - file: "gfonts://Heebo@Light"
         glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
 
-  # Volume/climate modal labels: 22px on the 480px S3 reference scaled to this 600px short side
+  # Media cover-art screensaver title
+  - file: "gfonts://Roboto@Light"
+    id: font_cover_art_title
+    size: 76
+    bpp: 4
+    glyphs: !include ../../../common/assets/text_glyphs.yaml
+    extras:
+      - file: "gfonts://Heebo@Light"
+        glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
+
+  # Media cover-art screensaver artist
+  - file: "gfonts://Roboto@Light"
+    id: font_cover_art_artist
+    size: 40
+    bpp: 4
+    glyphs: !include ../../../common/assets/text_glyphs.yaml
+    extras:
+      - file: "gfonts://Heebo@Light"
+        glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
+
+  # Media cover-art screensaver elapsed time
   - file: "gfonts://Roboto"
-    id: font_roboto_regular_28_basic
+    id: font_cover_art_time
+    size: 24
+    bpp: 4
+    glyphs: " 0123456789:/-"
+
+  # Larger modal/supporting labels
+  - file: "gfonts://Roboto"
+    id: font_text_large
     size: 28
     bpp: 4
+    glyphs: !include ../../../common/assets/text_glyphs.yaml
+
+  # Normal sensor values
+  - file: "gfonts://Roboto@Light"
+    id: font_number_value
+    size: 55
+    bpp: 4
     glyphs:
-      - " ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz/°"
+      - "0123456789.-°/%"
+      - ":"
+
+  # Large sensor values
+  - file: "gfonts://Roboto@Thin"
+    id: font_number_value_large
+    size: 138
+    bpp: 4
+    glyphs:
+      - "0123456789.-°/%"
+      - ":"
+
+  # Large modal numbers
+  - file: "gfonts://Roboto@Thin"
+    id: font_number_modal
+    size: 120
+    bpp: 4
+    glyphs:
+      - "0123456789.-°/%"
+      - ":"

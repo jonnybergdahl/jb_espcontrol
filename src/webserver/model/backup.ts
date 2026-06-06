@@ -7,6 +7,7 @@ import {
   sizeFromToken,
   type SlotSizeMap,
 } from "./grid";
+import type { StructuredSubpageConfig } from "./subpage";
 
 export const BACKUP_CONFIG_VERSION = 2;
 export const BACKUP_FORMAT = "espcontrol.backup";
@@ -19,6 +20,7 @@ export interface BackupSource {
 export interface BackupEnvelopeOutputs {
   buttons: CardConfig[];
   subpages: Record<string, string>;
+  subpage_objects?: Record<string, StructuredSubpageConfig>;
   button_order?: string;
 }
 
@@ -34,6 +36,7 @@ export interface NormalizedBackupEnvelope {
   sensor_card_color: string;
   buttons: CardConfig[];
   subpages: Record<string, string>;
+  subpage_objects: Record<string, StructuredSubpageConfig>;
   settings: Record<string, unknown> | null;
   screen: Record<string, unknown> | null;
 }
@@ -124,11 +127,12 @@ export function createBackupEnvelope(
     },
     exported_at: snapshot.exported_at || new Date().toISOString(),
     button_order: outputs.button_order != null ? String(outputs.button_order) : "",
-    button_on_color: snapshot.button_on_color || "FF8C00",
-    button_off_color: snapshot.button_off_color || "313131",
-    sensor_card_color: snapshot.sensor_card_color || "212121",
+    button_on_color: snapshot.button_on_color || "0073FF",
+    button_off_color: snapshot.button_off_color || "CECECE",
+    sensor_card_color: snapshot.sensor_card_color || "DEDEDE",
     buttons: outputs.buttons,
     subpages: outputs.subpages,
+    subpage_objects: outputs.subpage_objects || {},
     settings: snapshot.settings || {},
     screen: snapshot.screen || {},
   };
@@ -145,11 +149,12 @@ export function normalizeBackupEnvelope(
     source: backupSource(data, outputs.buttons.length),
     exported_at: String(data.exported_at || ""),
     button_order: String(data.button_order || ""),
-    button_on_color: String(data.button_on_color || "FF8C00"),
-    button_off_color: String(data.button_off_color || "313131"),
-    sensor_card_color: String(data.sensor_card_color || "212121"),
+    button_on_color: String(data.button_on_color || "0073FF"),
+    button_off_color: String(data.button_off_color || "CECECE"),
+    sensor_card_color: String(data.sensor_card_color || "DEDEDE"),
     buttons: outputs.buttons,
     subpages: outputs.subpages,
+    subpage_objects: outputs.subpage_objects || {},
     settings: isRecord(data.settings) ? data.settings : null,
     screen: isRecord(data.screen)
       ? data.screen

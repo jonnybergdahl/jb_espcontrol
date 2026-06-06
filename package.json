@@ -34,6 +34,8 @@
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
+    "test": "npm run check:fast",
+    "test:ci": "npm run check:ci",
     "webserver:build": "python3 scripts/build.py www"
   },
   "devDependencies": {

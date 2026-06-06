@@ -43,5 +43,5 @@ Tapping the card opens a climate control popup. From there, you can:
 The card follows Home Assistant attributes such as current temperature, target temperature, min/max temperature, target step, HVAC mode, fan mode, swing mode, and preset mode.
 
 ::: info Requires Home Assistant actions
-Climate cards send Home Assistant climate actions from the panel. If controls do not respond, check [Home Assistant Actions](/getting-started/home-assistant-actions).
+Climate cards send Home Assistant climate actions from the panel. If controls do not respond, check [Enable Actions](/getting-started/home-assistant-actions).
 :::

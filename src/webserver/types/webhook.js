@@ -41,7 +41,7 @@ var WEBHOOK_CARD_METADATA = {
   url: {
     label: "URL",
     idSuffix: "webhook-url",
-    placeholder: "e.g. http://192.168.1.50/core/api/jeeApi.php?...",
+    placeholder: "e.g. http://jeedom.local/core/api/jeeApi.php?...",
   },
   method: {
     label: "Method",

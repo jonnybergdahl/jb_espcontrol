@@ -58,5 +58,5 @@ This mode needs a Home Assistant light that supports colour temperature. If a li
 Use **Lights** for light-specific controls. Use [Slider](/card-types/sliders) when you want a generic slider for a light or fan, especially fan speed control.
 
 ::: info Requires Home Assistant actions
-Light cards send Home Assistant actions from the panel. If tapping or dragging a card does nothing, check [Home Assistant Actions](/getting-started/home-assistant-actions).
+Light cards send Home Assistant actions from the panel. If tapping or dragging a card does nothing, check [Enable Actions](/getting-started/home-assistant-actions).
 :::

@@ -19,6 +19,7 @@
   var CFG = {"slots":20,"cols":5,"rows":4,"dragMode":"swap","dragAnimation":true,"screen":{"width":"67%","aspect":"1024/600"},"topbar":{"height":3.2,"padding":"0.39cqw","fontSize":1.95},"grid":{"top":4.4,"left":0.49,"right":0.49,"bottom":0.49,"gap":0.98,"fr":"1fr"},"btn":{"radius":0.78,"padding":1.37,"iconSize":4.69,"labelSize":1.8},"emptyCell":{"radius":0.78},"sensorBadge":{"top":1,"right":1,"fontSize":1.6},"subpageBadge":{"bottom":1,"right":1,"fontSize":2}};
   // __DEVICE_CONFIG_END__
   var NUM_SLOTS = CFG.slots;
+  var TOTAL_SLOTS = NUM_SLOTS;
   var GRID_COLS = CFG.cols;
   var GRID_ROWS = CFG.rows;
 
@@ -95,8 +96,11 @@
 
     r.setProperty("--btn-r", scaledCqw(btn.radius, scale));
     r.setProperty("--btn-pad", scaledCqw(btn.padding, scale));
+    if (btn.borderWidth != null) r.setProperty("--btn-border", scaledCqw(btn.borderWidth, scale));
+    else r.removeProperty("--btn-border");
     r.setProperty("--btn-icon", scaledCqw(btn.iconSize, scale));
     r.setProperty("--btn-label", scaledCqw(btn.labelSize, scale));
+    r.setProperty("--btn-label-weight", String(btn.labelWeight || 400));
     r.setProperty("--btn-lines", String(btn.labelLines || 1));
     r.setProperty("--btn-lines-dbl", String(btn.labelLinesDouble || btn.labelLines || 1));
 
@@ -173,53 +177,53 @@
     "Weather Night Cloudy": "weather-night-partly-cloudy",
   };
   var ICON_NAMES = [
-    "Account", "Air Conditioner", "Air Filter", "Air Purifier", "Air Purifier Off", "Alarm",
-    "Alarm Light", "Application", "Arrow Down", "Arrow Up", "Battery", "Battery 10%",
-    "Battery 20%", "Battery 30%", "Battery 40%", "Battery 50%", "Battery 60%", "Battery 70%",
-    "Battery 80%", "Battery 90%", "Battery Alert", "Battery Charging", "Battery Charging 100", "Battery Charging 70",
-    "Battery High", "Battery Low", "Battery Medium", "Battery Off", "Battery Outline", "Battery Unknown",
-    "Bathtub", "Bed", "Bed King", "Bed Queen", "Bell", "Blinds",
-    "Blinds Horizontal", "Blinds Horizontal Closed", "Blinds Open", "Bluetooth", "Broom", "Camera",
-    "Car Electric", "Cast", "Cat", "CCTV", "Ceiling Fan", "Ceiling Light",
-    "Ceiling Lights Multiple", "Chandelier", "Check", "Chair Rolling", "Chevron Down", "Chevron Up",
-    "Clock", "Coffee Maker", "Current AC", "Current DC", "Curtains", "Curtains Closed",
-    "Delete", "Delete Empty", "Delete Outline", "Desk", "Desk Lamp", "Dishwasher",
-    "Dishwasher Off", "Dog", "Downlight", "Door", "Door Open", "Doorbell",
-    "Dots Horizontal", "Dryer", "Dryer Off", "EV Charger", "Fan", "Fan Off",
-    "Fan Auto", "Fan Speed 1", "Fan Speed 2", "Fan Speed 3", "Fire", "Fire Off",
-    "Fireplace", "Flash", "Floor Lamp", "Fountain", "Fridge", "Gamepad",
-    "Garage", "Garage Open", "Garage Open Variant", "Garage Variant", "Gate", "Gate Open",
-    "Gesture Tap", "Gauge", "Gauge Empty", "Gauge Full", "Gauge Low", "Grid Export",
-    "Grid Import", "Grid Off", "Headphones", "Radiator", "Radiator Off", "Home",
-    "Heat Pump", "Heat Wave", "Heating Coil", "HVAC", "HVAC Off", "Hot Tub",
-    "Humidifier", "Humidity Alert", "Iron", "Kettle", "Key", "Lamp",
-    "Lamp Outline", "LAN", "Lawnmower", "Leaf", "LED Strip", "LED Strip Variant",
-    "LED Strip Variant Off", "Light Switch", "Flood Light Down", "Lightbulb", "Lightbulb Group", "Lightbulb Group Outline",
-    "Lightbulb Night", "Lightbulb Night Outline", "Lightbulb Off", "Lightbulb On Outline", "Lightbulb Spot", "Lightbulb Spot Off",
-    "Lightbulb Variant", "Lightbulb Variant Outline", "Lightbulb Outline", "Lightning Bolt", "Lock", "Lock Open",
-    "Lock Open Outline", "Lock Outline", "Mailbox", "Message Video", "Medication", "Medication Outline",
-    "Meter Electric", "Meter Gas", "Microsoft Xbox", "Microwave", "Minus", "Monitor",
-    "Motion Sensor", "Motion Sensor Off", "Movie Roll", "Music", "Outdoor Lamp", "Oven",
-    "Package", "Package Closed", "Pill", "Pill Multiple", "Plus", "Play Pause",
-    "Pool", "Power", "Power Plug", "Progress Clock", "Printer", "Printer 3D",
-    "Projector", "Projector Off", "Recycle", "Robot Vacuum", "Roller Shade", "Roller Shade Closed",
-    "Router", "Router Network", "Security", "Shield Home", "Shield Lock", "Shield Off",
-    "Shower", "Shower Head", "Skip Next", "Skip Previous", "Smoke Detector", "Snowflake",
-    "Snowflake Alert", "Snowflake Thermometer", "Silverware", "Sofa", "Sofa Outline", "Solar Panel",
-    "Solar Panel Large", "Solar Power", "Solar Power Variant", "Speaker", "Spotlight", "Sprinkler",
-    "Stop", "String Lights", "String Lights Off", "Stove", "Swap Horizontal", "Power Socket UK",
-    "Power Socket EU", "Power Socket US", "Sun", "Table", "Table Chair", "Television",
-    "Television Off", "Thermometer", "Thermometer Alert", "Thermometer High", "Thermometer Low", "Thermometer Off",
-    "Thermostat", "Thermostat Box", "Home-Thermostat", "Thermostat Auto", "Thermometer Water", "Timer",
-    "Toilet", "Transmission Tower", "Trash Can", "Trash Can Outline", "Volume High", "Wall Outlet",
-    "Wall Sconce", "Washing Machine", "Washing Machine Off", "Water", "Water Boiler", "Water Boiler Off",
-    "Water Percent", "Water Alert", "Weather Cloudy", "Weather Cloudy Alert", "Weather Dust", "Weather Fog",
-    "Weather Hail", "Weather Hazy", "Weather Hurricane", "Weather Lightning", "Weather Lightning Rainy", "Weather Night",
-    "Weather Night Cloudy", "Weather Partly Cloudy", "Weather Partly Lightning", "Weather Partly Rainy", "Weather Partly Snowy", "Weather Partly Snowy Rainy",
-    "Weather Pouring", "Weather Rainy", "Weather Snowy", "Weather Snowy Heavy", "Weather Snowy Rainy", "Weather Sunny",
-    "Weather Sunny Alert", "Weather Sunny Off", "Weather Sunset", "Weather Sunset Down", "Weather Sunset Up", "Weather Tornado",
-    "Weather Windy", "Weather Windy Variant", "Wind Power", "Wind Turbine", "Wind Turbine Alert", "Wind Turbine Check",
-    "Window Closed", "Window Open", "Window Shutter", "Window Shutter Open",
+    "Account", "Air Conditioner", "Air Filter", "Air Purifier", "Air Purifier Off", "Airplane",
+    "Alarm", "Alarm Light", "Application", "Arrow Down", "Arrow Up", "Battery",
+    "Battery 10%", "Battery 20%", "Battery 30%", "Battery 40%", "Battery 50%", "Battery 60%",
+    "Battery 70%", "Battery 80%", "Battery 90%", "Battery Alert", "Battery Charging", "Battery Charging 100",
+    "Battery Charging 70", "Battery High", "Battery Low", "Battery Medium", "Battery Off", "Battery Outline",
+    "Battery Unknown", "Bathtub", "Bed", "Bed King", "Bed Queen", "Bell",
+    "Blinds", "Blinds Horizontal", "Blinds Horizontal Closed", "Blinds Open", "Bluetooth", "Broom",
+    "Camera", "Car Electric", "Cast", "Cat", "CCTV", "Ceiling Fan",
+    "Ceiling Light", "Ceiling Lights Multiple", "Chandelier", "Check", "Chair Rolling", "Chevron Down",
+    "Chevron Up", "Clock", "Coffee Maker", "Current AC", "Current DC", "Curtains",
+    "Curtains Closed", "Delete", "Delete Empty", "Delete Outline", "Desk", "Desk Lamp",
+    "Dishwasher", "Dishwasher Off", "Dog", "Downlight", "Door", "Door Open",
+    "Doorbell", "Dots Horizontal", "Dryer", "Dryer Off", "EV Charger", "Fan",
+    "Fan Off", "Fan Auto", "Fan Speed 1", "Fan Speed 2", "Fan Speed 3", "Fire",
+    "Fire Off", "Fireplace", "Flash", "Floor Lamp", "Fountain", "Fridge",
+    "Gamepad", "Garage", "Garage Open", "Garage Open Variant", "Garage Variant", "Gate",
+    "Gate Open", "Gesture Tap", "Gauge", "Gauge Empty", "Gauge Full", "Gauge Low",
+    "Grid Export", "Grid Import", "Grid Off", "Headphones", "Radiator", "Radiator Off",
+    "Home", "Heat Pump", "Heat Wave", "Heating Coil", "HVAC", "HVAC Off",
+    "Hot Tub", "Humidifier", "Humidity Alert", "Iron", "Kettle", "Key",
+    "Lamp", "Lamp Outline", "LAN", "Lawnmower", "Leaf", "LED Strip",
+    "LED Strip Variant", "LED Strip Variant Off", "Light Switch", "Flood Light Down", "Lightbulb", "Lightbulb Group",
+    "Lightbulb Group Outline", "Lightbulb Night", "Lightbulb Night Outline", "Lightbulb Off", "Lightbulb On Outline", "Lightbulb Spot",
+    "Lightbulb Spot Off", "Lightbulb Variant", "Lightbulb Variant Outline", "Lightbulb Outline", "Lightning Bolt", "Lock",
+    "Lock Open", "Lock Open Outline", "Lock Outline", "Mailbox", "Message Video", "Medication",
+    "Medication Outline", "Meter Electric", "Meter Gas", "Microsoft Xbox", "Microwave", "Minus",
+    "Monitor", "Motion Sensor", "Motion Sensor Off", "Movie Roll", "Music", "Outdoor Lamp",
+    "Oven", "Package", "Package Closed", "Pill", "Pill Multiple", "Plus",
+    "Play Pause", "Pool", "Power", "Power Plug", "Progress Clock", "Printer",
+    "Printer 3D", "Projector", "Projector Off", "Recycle", "Robot Vacuum", "Roller Shade",
+    "Roller Shade Closed", "Router", "Router Network", "Security", "Shield Home", "Shield Lock",
+    "Shield Off", "Shower", "Shower Head", "Skip Next", "Skip Previous", "Smoke Detector",
+    "Snowflake", "Snowflake Alert", "Snowflake Thermometer", "Silverware", "Sofa", "Sofa Outline",
+    "Solar Panel", "Solar Panel Large", "Solar Power", "Solar Power Variant", "Speaker", "Spotlight",
+    "Sprinkler", "Stop", "String Lights", "String Lights Off", "Stove", "Swap Horizontal",
+    "Power Socket UK", "Power Socket EU", "Power Socket US", "Sun", "Table", "Table Chair",
+    "Television", "Television Off", "Thermometer", "Thermometer Alert", "Thermometer High", "Thermometer Low",
+    "Thermometer Off", "Thermostat", "Thermostat Box", "Home-Thermostat", "Thermostat Auto", "Thermometer Water",
+    "Timer", "Toilet", "Transmission Tower", "Trash Can", "Trash Can Outline", "Volume High",
+    "Wall Outlet", "Wall Sconce", "Washing Machine", "Washing Machine Off", "Water", "Water Boiler",
+    "Water Boiler Off", "Water Percent", "Water Alert", "Weather Cloudy", "Weather Cloudy Alert", "Weather Dust",
+    "Weather Fog", "Weather Hail", "Weather Hazy", "Weather Hurricane", "Weather Lightning", "Weather Lightning Rainy",
+    "Weather Night", "Weather Night Cloudy", "Weather Partly Cloudy", "Weather Partly Lightning", "Weather Partly Rainy", "Weather Partly Snowy",
+    "Weather Partly Snowy Rainy", "Weather Pouring", "Weather Rainy", "Weather Snowy", "Weather Snowy Heavy", "Weather Snowy Rainy",
+    "Weather Sunny", "Weather Sunny Alert", "Weather Sunny Off", "Weather Sunset", "Weather Sunset Down", "Weather Sunset Up",
+    "Weather Tornado", "Weather Windy", "Weather Windy Variant", "Wind Power", "Wind Turbine", "Wind Turbine Alert",
+    "Wind Turbine Check", "Window Closed", "Window Open", "Window Shutter", "Window Shutter Open",
   ];
   // --- GENERATED:ICONS END ---
 

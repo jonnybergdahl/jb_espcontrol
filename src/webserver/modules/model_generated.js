@@ -28,7 +28,6 @@ var EspControlModel = (() => {
     BACKUP_CONFIG_VERSION: () => BACKUP_CONFIG_VERSION,
     BACKUP_FORMAT: () => BACKUP_FORMAT,
     CARD_CONFIG_FIELDS: () => CARD_CONFIG_FIELDS,
-    MONTH_NAME_DEFAULTS: () => MONTH_NAME_DEFAULTS,
     applySpans: () => applySpans,
     backLabelFromOrder: () => backLabelFromOrder,
     backOrderToken: () => backOrderToken,
@@ -56,7 +55,7 @@ var EspControlModel = (() => {
     normalizeClockBrightness: () => normalizeClockBrightness,
     normalizeHexColor: () => normalizeHexColor,
     normalizeHour: () => normalizeHour,
-    normalizeMonthNames: () => normalizeMonthNames,
+    normalizeLanguage: () => normalizeLanguage,
     normalizeNtpServer: () => normalizeNtpServer,
     normalizeScheduleClockBrightness: () => normalizeScheduleClockBrightness,
     normalizeScheduleDimmedBrightness: () => normalizeScheduleDimmedBrightness,
@@ -72,6 +71,7 @@ var EspControlModel = (() => {
     parseLegacySubpageConfig: () => parseLegacySubpageConfig,
     parseRawButtonConfig: () => parseRawButtonConfig,
     parseRawSubpageConfig: () => parseRawSubpageConfig,
+    parseStructuredSubpageConfig: () => parseStructuredSubpageConfig,
     parseSubpageOrder: () => parseSubpageOrder,
     planBackupButtonLayout: () => planBackupButtonLayout,
     scheduleModeOption: () => scheduleModeOption,
@@ -79,7 +79,6 @@ var EspControlModel = (() => {
     serializeCompactSubpageConfig: () => serializeCompactSubpageConfig,
     serializeGridOrder: () => serializeGridOrder,
     serializeLegacySubpageConfig: () => serializeLegacySubpageConfig,
-    serializeMonthNames: () => serializeMonthNames,
     serializeSubpageGrid: () => serializeSubpageGrid,
     sizeColSpan: () => sizeColSpan,
     sizeFitsAt: () => sizeFitsAt,
@@ -87,6 +86,7 @@ var EspControlModel = (() => {
     sizeRowSpan: () => sizeRowSpan,
     sizeToken: () => sizeToken,
     splitSubpageConfigChunks: () => splitSubpageConfigChunks,
+    structuredSubpageFromParsed: () => structuredSubpageFromParsed,
     subpageOrderForSerialize: () => subpageOrderForSerialize,
     trimConfigFields: () => trimConfigFields,
     validateBackupEnvelope: () => validateBackupEnvelope
@@ -357,11 +357,12 @@ var EspControlModel = (() => {
       },
       exported_at: snapshot.exported_at || (/* @__PURE__ */ new Date()).toISOString(),
       button_order: outputs.button_order != null ? String(outputs.button_order) : "",
-      button_on_color: snapshot.button_on_color || "FF8C00",
-      button_off_color: snapshot.button_off_color || "313131",
-      sensor_card_color: snapshot.sensor_card_color || "212121",
+      button_on_color: snapshot.button_on_color || "0073FF",
+      button_off_color: snapshot.button_off_color || "CECECE",
+      sensor_card_color: snapshot.sensor_card_color || "DEDEDE",
       buttons: outputs.buttons,
       subpages: outputs.subpages,
+      subpage_objects: outputs.subpage_objects || {},
       settings: snapshot.settings || {},
       screen: snapshot.screen || {}
     };
@@ -374,11 +375,12 @@ var EspControlModel = (() => {
       source: backupSource(data, outputs.buttons.length),
       exported_at: String(data.exported_at || ""),
       button_order: String(data.button_order || ""),
-      button_on_color: String(data.button_on_color || "FF8C00"),
-      button_off_color: String(data.button_off_color || "313131"),
-      sensor_card_color: String(data.sensor_card_color || "212121"),
+      button_on_color: String(data.button_on_color || "0073FF"),
+      button_off_color: String(data.button_off_color || "CECECE"),
+      sensor_card_color: String(data.sensor_card_color || "DEDEDE"),
       buttons: outputs.buttons,
       subpages: outputs.subpages,
+      subpage_objects: outputs.subpage_objects || {},
       settings: isRecord(data.settings) ? data.settings : null,
       screen: isRecord(data.screen) ? data.screen : isRecord(data.settings) && isRecord(data.settings.screen) ? data.settings.screen : null
     };
@@ -467,6 +469,13 @@ var EspControlModel = (() => {
 
   // src/webserver/model/subpage.ts
   var BACK_TOKENS = /* @__PURE__ */ new Set(["B", "Bd", "Bw", "Bb", "Bt", "Bx"]);
+  function isRecord2(value) {
+    return !!value && typeof value === "object" && !Array.isArray(value);
+  }
+  function stringField(record, key, fallback = "") {
+    const value = record[key];
+    return value == null ? fallback : String(value || fallback);
+  }
   function isBackOrderToken(token) {
     return BACK_TOKENS.has(String(token || ""));
   }
@@ -574,6 +583,39 @@ var EspControlModel = (() => {
   function parseRawSubpageConfig(value, typeFromCode) {
     if (value && value.charAt(0) === "~") return parseCompactSubpageConfig(value, typeFromCode);
     return parseLegacySubpageConfig(value);
+  }
+  function structuredSubpageFromParsed(subpage) {
+    return {
+      order: (subpage?.order || []).map((item) => parseBackOrderToken(item).token),
+      back_label: subpage?.backLabel || backLabelFromOrder(subpage?.order) || "Back",
+      buttons: (subpage?.buttons || []).map((button) => cloneCardConfig(button))
+    };
+  }
+  function parseStructuredSubpageConfig(value) {
+    if (!isRecord2(value)) return { order: [], buttons: [], backLabel: "Back" };
+    const orderValues = Array.isArray(value.order) ? value.order.map((item) => String(item || "")) : [];
+    const parsedOrder = parseSubpageOrder(orderValues.join(","));
+    const backLabel = stringField(value, "back_label", stringField(value, "backLabel", parsedOrder.backLabel));
+    const rawButtons = Array.isArray(value.buttons) ? value.buttons : [];
+    const buttons = rawButtons.map((button) => {
+      const record = isRecord2(button) ? button : {};
+      return cloneCardConfig({
+        entity: stringField(record, "entity"),
+        label: stringField(record, "label"),
+        icon: stringField(record, "icon", "Auto"),
+        icon_on: stringField(record, "icon_on", "Auto"),
+        sensor: stringField(record, "sensor"),
+        unit: stringField(record, "unit"),
+        type: stringField(record, "type"),
+        precision: stringField(record, "precision"),
+        options: stringField(record, "options")
+      });
+    });
+    return {
+      order: parsedOrder.order,
+      buttons,
+      backLabel: backLabel || "Back"
+    };
   }
   function legacySubpageFieldsSafe(buttonFields) {
     for (const fields of buttonFields) {
@@ -688,25 +730,24 @@ var EspControlModel = (() => {
   }
 
   // src/webserver/model/settings.ts
-  var MONTH_NAME_DEFAULTS = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December"
-  ];
   function normalizeTemperatureUnit(value) {
     const unit = String(value == null ? "" : value).trim().toLowerCase();
     if (unit === "f" || unit === "\xB0f" || unit === "fahrenheit") return "\xB0F";
     if (unit === "c" || unit === "\xB0c" || unit === "celsius" || unit === "centigrade") return "\xB0C";
     return "Auto";
+  }
+  function normalizeClockBarTemperatureEntities(value) {
+    const input = Array.isArray(value) ? value : String(value || "").split(/[|,\n]/);
+    const out = [];
+    for (const entry of input) {
+      const entity = String(entry || "").trim();
+      if (entity && out.indexOf(entity) === -1) out.push(entity);
+    }
+    return out.slice(0, 6);
+  }
+  function normalizeLanguage(value) {
+    const language = String(value == null ? "" : value).trim().toLowerCase();
+    return language || "en";
   }
   function normalizeHour(value, fallback) {
     const n = parseInt(String(value), 10);
@@ -791,18 +832,6 @@ var EspControlModel = (() => {
     const server = String(value == null ? "" : value).trim();
     return server || fallback;
   }
-  function normalizeMonthNames(value) {
-    const parts = Array.isArray(value) ? value.slice() : String(value == null ? "" : value).split(",");
-    const out = [];
-    for (let i = 0; i < 12; i += 1) {
-      const text = String(parts[i] == null ? "" : parts[i]).trim();
-      out.push(text || MONTH_NAME_DEFAULTS[i] || "");
-    }
-    return out;
-  }
-  function serializeMonthNames(value) {
-    return normalizeMonthNames(value).join(",");
-  }
   function numberOrFallback(value, fallback) {
     const n = parseFloat(String(value));
     return Number.isFinite(n) ? n : fallback;
@@ -847,7 +876,6 @@ var EspControlModel = (() => {
     const hasNtpServer1 = objectValue(settings, "ntp_server_1") !== void 0;
     const hasNtpServer2 = objectValue(settings, "ntp_server_2") !== void 0;
     const hasNtpServer3 = objectValue(settings, "ntp_server_3") !== void 0;
-    const hasMonthNames = objectValue(settings, "month_names") !== void 0;
     const hasDeveloperExperimentalFeatures = objectValue(settings, "developer_experimental_features") !== void 0;
     const clockFormat = current.clockFormatOptions.indexOf(String(settings.clock_format || "")) !== -1 ? String(settings.clock_format) : current.clockFormat;
     const screensaverAction = normalizeScreensaverAction(
@@ -861,32 +889,54 @@ var EspControlModel = (() => {
       objectValue(settings, "clock_brightness_night") != null ? settings.clock_brightness_night : settings.clock_brightness,
       clockBrightnessDay
     );
+    const legacyTemperatureEntities = [];
+    if (settings.outdoor_temp_enable && settings.outdoor_temp_entity) {
+      legacyTemperatureEntities.push(String(settings.outdoor_temp_entity));
+    }
+    if (settings.indoor_temp_enable && settings.indoor_temp_entity) {
+      legacyTemperatureEntities.push(String(settings.indoor_temp_entity));
+    }
+    const clockBarTemperatureEntities = normalizeClockBarTemperatureEntities(
+      objectValue(settings, "clock_bar_temperature_entities") != null ? settings.clock_bar_temperature_entities : legacyTemperatureEntities
+    );
     return {
-      indoorTempEnable: !!settings.indoor_temp_enable,
-      outdoorTempEnable: !!settings.outdoor_temp_enable,
-      indoorTempEntity: String(settings.indoor_temp_entity || ""),
-      outdoorTempEntity: String(settings.outdoor_temp_entity || ""),
+      indoorTempEnable: clockBarTemperatureEntities.length > 1,
+      outdoorTempEnable: clockBarTemperatureEntities.length > 0,
+      indoorTempEntity: clockBarTemperatureEntities[1] || "",
+      outdoorTempEntity: clockBarTemperatureEntities[0] || "",
+      clockBarTemperatureEntities,
       clockBar: objectValue(settings, "clock_bar") != null ? !!settings.clock_bar : false,
+      clockBarLayout: String(settings.clock_bar_layout || current.clockBarLayout),
+      clockBarTime: objectValue(settings, "clock_bar_time") != null ? !!settings.clock_bar_time : true,
+      clockBarWeatherIcon: objectValue(settings, "clock_bar_weather_icon") != null ? !!settings.clock_bar_weather_icon : false,
+      clockBarWeatherEntity: String(settings.clock_bar_weather_entity || ""),
       networkStatusIcon: objectValue(settings, "network_status_icon") != null ? !!settings.network_status_icon : true,
       temperatureDegreeSymbol: objectValue(settings, "temperature_degree_symbol") != null ? !!settings.temperature_degree_symbol : true,
       subpageChevron: objectValue(settings, "subpage_chevron") != null ? !!settings.subpage_chevron : true,
       timezone: String(settings.timezone || current.timezone),
       temperatureUnit: normalizeTemperatureUnit(settings.temperature_unit),
+      language: normalizeLanguage(settings.language || current.language),
       clockFormat,
       hasNtpServer1,
       hasNtpServer2,
       hasNtpServer3,
-      hasMonthNames,
       hasDeveloperExperimentalFeatures,
       developerExperimentalFeatures: hasDeveloperExperimentalFeatures ? !!settings.developer_experimental_features : current.developerExperimentalFeatures,
       ntpServer1: hasNtpServer1 ? normalizeNtpServer(settings.ntp_server_1, current.ntpDefaults[0] || "") : current.ntpServer1,
       ntpServer2: hasNtpServer2 ? normalizeNtpServer(settings.ntp_server_2, current.ntpDefaults[1] || "") : current.ntpServer2,
       ntpServer3: hasNtpServer3 ? normalizeNtpServer(settings.ntp_server_3, current.ntpDefaults[2] || "") : current.ntpServer3,
-      monthNames: hasMonthNames ? normalizeMonthNames(settings.month_names) : normalizeMonthNames(current.monthNames),
       screensaverMode: normalizeScreensaverMode(settings.screensaver_mode),
       presenceSensorEntity: String(settings.presence_sensor_entity || ""),
       mediaPlayerSleepPrevention: !!settings.media_player_sleep_prevention,
       mediaPlayerSleepPreventionEntity: String(settings.media_player_sleep_prevention_entity || ""),
+      coverArtScreensaver: !!settings.cover_art_screensaver,
+      coverArtMediaPlayerEntity: String(settings.cover_art_media_player_entity || ""),
+      coverArtHomeAssistantUrl: String(settings.cover_art_home_assistant_url || ""),
+      coverArtDelay: objectValue(settings, "cover_art_delay") != null ? settings.cover_art_delay : 10,
+      coverArtTrackOverlayDuration: objectValue(settings, "cover_art_track_overlay_duration") != null ? settings.cover_art_track_overlay_duration : 5,
+      coverArtProgressBar: objectValue(settings, "cover_art_progress_bar") != null ? !!settings.cover_art_progress_bar : true,
+      coverArtOpenMediaSubpage: !!settings.cover_art_open_media_subpage,
+      coverArtMediaSubpageTarget: String(settings.cover_art_media_subpage_target || ""),
       screensaverAction,
       clockScreensaver: screensaverAction === "clock",
       clockBrightnessDay,

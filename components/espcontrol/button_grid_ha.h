@@ -1,7 +1,9 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
@@ -10,6 +12,10 @@
 using HomeAssistantStateCallback = std::function<void(esphome::StringRef)>;
 using HomeAssistantActionResponseCallback =
   std::function<void(const esphome::api::ActionResponse &)>;
+
+inline bool ha_entity_state_unavailable_ref(const std::string &entity_id,
+                                            esphome::StringRef state);
+inline uint32_t &ha_subscription_generation();
 
 inline bool ha_api_available() {
   return esphome::api::global_api_server != nullptr;
@@ -21,6 +27,68 @@ inline bool ha_api_connected() {
 
 inline bool ha_api_state_connected() {
   return ha_api_available() && esphome::api::global_api_server->is_connected_with_state_subscription();
+}
+
+constexpr uint32_t HA_UNAVAILABLE_STATE_RETRY_INTERVAL_MS = 5000;
+
+struct HaUnavailableStateRetryRef {
+  std::string entity_id;
+  std::shared_ptr<HomeAssistantStateCallback> callback;
+  uint32_t generation = 0;
+  uint32_t last_request_ms = 0;
+  bool waiting_for_response = false;
+  bool unavailable = false;
+};
+
+inline std::vector<HaUnavailableStateRetryRef> &ha_unavailable_state_retry_refs() {
+  static std::vector<HaUnavailableStateRetryRef> refs;
+  return refs;
+}
+
+inline void ha_reset_unavailable_state_retries() {
+  ha_unavailable_state_retry_refs().clear();
+}
+#define ESPCONTROL_HA_RETRY_HELPERS_DEFINED 1
+
+inline void ha_note_state_retry_result(const std::string &entity_id,
+                                       esphome::StringRef state,
+                                       uint32_t generation) {
+  std::vector<HaUnavailableStateRetryRef> &refs = ha_unavailable_state_retry_refs();
+  for (auto &ref : refs) {
+    if (ref.generation != generation || ref.entity_id != entity_id) continue;
+    ref.unavailable = ha_entity_state_unavailable_ref(entity_id, state);
+    ref.waiting_for_response = false;
+  }
+}
+
+inline void ha_retry_unavailable_states(bool force = false) {
+  if (!ha_api_state_connected()) return;
+  const uint32_t now = esphome::millis();
+  const uint32_t active_generation = ha_subscription_generation();
+  std::vector<HaUnavailableStateRetryRef> &refs = ha_unavailable_state_retry_refs();
+
+  for (auto &ref : refs) {
+    if (ref.generation != active_generation || !ref.unavailable || !ref.callback) continue;
+    if (ref.waiting_for_response) continue;
+    if (!force) {
+      if (ref.last_request_ms != 0 &&
+          now - ref.last_request_ms < HA_UNAVAILABLE_STATE_RETRY_INTERVAL_MS) {
+        continue;
+      }
+    }
+
+    ref.waiting_for_response = true;
+    ref.last_request_ms = now;
+    const std::string entity_id = ref.entity_id;
+    const uint32_t generation = ref.generation;
+    auto callback = ref.callback;
+    esphome::api::global_api_server->get_home_assistant_state(
+      entity_id, {},
+      [entity_id, generation, callback](esphome::StringRef state) {
+        ha_note_state_retry_result(entity_id, state, generation);
+        if (callback && *callback) (*callback)(state);
+      });
+  }
 }
 
 inline bool ha_action_begin(esphome::api::HomeassistantActionRequest &req,
@@ -92,17 +160,60 @@ inline bool ha_cancel_action_response_callback(uint32_t call_id, const char *err
 
 inline bool ha_subscribe_state(const std::string &entity_id,
                                HomeAssistantStateCallback callback) {
-  if (!ha_api_available() || entity_id.empty()) return false;
+  if (!ha_api_available() || entity_id.empty() || !callback) return false;
+  auto callback_ref = std::make_shared<HomeAssistantStateCallback>(std::move(callback));
+  const uint32_t generation = ha_subscription_generation();
+  ha_unavailable_state_retry_refs().push_back({
+    entity_id,
+    callback_ref,
+    generation,
+    0,
+    false,
+    false,
+  });
   esphome::api::global_api_server->subscribe_home_assistant_state(
-    entity_id, {}, std::move(callback));
+    entity_id, {},
+    [entity_id, callback_ref, generation](esphome::StringRef state) {
+      ha_note_state_retry_result(entity_id, state, generation);
+      if (callback_ref && *callback_ref) (*callback_ref)(state);
+    });
+  return true;
+}
+
+inline bool ha_get_state(const std::string &entity_id,
+                         HomeAssistantStateCallback callback) {
+  if (!ha_api_available() || entity_id.empty() || !callback) return false;
+  auto callback_ref = std::make_shared<HomeAssistantStateCallback>(std::move(callback));
+  esphome::api::global_api_server->get_home_assistant_state(
+    entity_id, {},
+    [callback_ref](esphome::StringRef state) {
+      if (callback_ref && *callback_ref) (*callback_ref)(state);
+    });
   return true;
 }
 
 inline bool ha_subscribe_attribute(const std::string &entity_id,
                                    const std::string &attribute,
                                    HomeAssistantStateCallback callback) {
-  if (!ha_api_available() || entity_id.empty()) return false;
+  if (!ha_api_available() || entity_id.empty() || !callback) return false;
+  auto callback_ref = std::make_shared<HomeAssistantStateCallback>(std::move(callback));
   esphome::api::global_api_server->subscribe_home_assistant_state(
-    entity_id, attribute, std::move(callback));
+    entity_id, attribute,
+    [callback_ref](esphome::StringRef state) {
+      if (callback_ref && *callback_ref) (*callback_ref)(state);
+    });
+  return true;
+}
+
+inline bool ha_get_attribute(const std::string &entity_id,
+                             const std::string &attribute,
+                             HomeAssistantStateCallback callback) {
+  if (!ha_api_available() || entity_id.empty() || !callback) return false;
+  auto callback_ref = std::make_shared<HomeAssistantStateCallback>(std::move(callback));
+  esphome::api::global_api_server->get_home_assistant_state(
+    entity_id, attribute,
+    [callback_ref](esphome::StringRef state) {
+      if (callback_ref && *callback_ref) (*callback_ref)(state);
+    });
   return true;
 }

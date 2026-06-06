@@ -57,6 +57,6 @@ lvgl:
                     - label:
                         text: "Connect an Ethernet cable\nand wait for a network address"
                         text_font: $setup_body_font_id
-                        text_color: 0x888888
+                        text_color: 0xB0B0B0
                         width: $content_width
                         text_align: center

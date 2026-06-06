@@ -186,6 +186,68 @@ function setupPreviewEvents() {
   var container = els.previewMain;
   var pendingCellIdx = -1;
 
+  if (els.topbar) {
+    els.topbar.addEventListener("click", function (e) {
+      if (isConfigLocked()) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      var addTarget = e.target.closest("[data-clockbar-add]");
+      if (addTarget && els.topbar.contains(addTarget)) {
+        e.preventDefault();
+        e.stopPropagation();
+        showClockBarAddMenu(e, addTarget.getAttribute("data-clockbar-add"));
+        clearTextSelection();
+        return;
+      }
+      var target = e.target.closest("[data-clockbar-item]");
+      if (!target || !els.topbar.contains(target)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      var item = target.getAttribute("data-clockbar-item");
+      state.clockBarAddDraft = null;
+      setClockBarItemSelected(item, false);
+      clearTextSelection();
+    });
+
+    els.topbar.addEventListener("dragstart", function (e) {
+      if (isConfigLocked()) return;
+      var target = e.target.closest("[data-clockbar-item]");
+      if (!target || !els.topbar.contains(target)) return;
+      state.clockBarDragItem = target.getAttribute("data-clockbar-item");
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", state.clockBarDragItem);
+      }
+    });
+
+    els.topbar.addEventListener("dragover", function (e) {
+      if (isConfigLocked() || !state.clockBarDragItem) return;
+      var section = e.target.closest("[data-clockbar-section]");
+      if (!section || !els.topbar.contains(section)) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    });
+
+    els.topbar.addEventListener("drop", function (e) {
+      if (isConfigLocked()) return;
+      var section = e.target.closest("[data-clockbar-section]");
+      if (!section || !els.topbar.contains(section)) return;
+      var item = state.clockBarDragItem || (e.dataTransfer && e.dataTransfer.getData("text/plain"));
+      if (!item) return;
+      e.preventDefault();
+      e.stopPropagation();
+      moveClockBarItem(item, section.getAttribute("data-clockbar-section"));
+      setClockBarItemSelected(item, false);
+      state.clockBarDragItem = "";
+    });
+
+    els.topbar.addEventListener("dragend", function () {
+      state.clockBarDragItem = "";
+    });
+  }
+
   function isBackExitTarget(e, target) {
     var icon = target.querySelector(".sp-back-hit");
     if (!icon) return false;
@@ -220,6 +282,11 @@ function setupPreviewEvents() {
     }
     var target = e.target.closest("[data-pos]");
     if (!target) return;
+    if (state.clockBarSelectedItem || state.clockBarAddDraft) {
+      state.clockBarSelectedItem = "";
+      state.clockBarAddDraft = null;
+      updateClockBarItemUi();
+    }
     var pos = parseInt(target.getAttribute("data-pos"), 10);
     var c = ctx();
     var slot = c.grid[pos];
@@ -463,31 +530,46 @@ function emptyButtonConfig(type) {
   return EspControlModel.emptyCardConfig(type);
 }
 
+function newCardDraftKey(isSub, homeSlot, pos, slot) {
+  return (isSub ? "sub:" + homeSlot : "main") + ":new:" + pos + ":" + slot;
+}
+
+function beginNewCardDraft(pos, slot, isSub) {
+  state.clockBarAddDraft = null;
+  state.settingsDraft = {
+    key: newCardDraftKey(isSub, state.editingSubpage, pos, slot),
+    slot: slot,
+    homeSlot: state.editingSubpage,
+    isSub: isSub,
+    isNew: true,
+    pos: pos,
+    dirty: false,
+    typeSelected: false,
+    button: emptyButtonConfig(),
+  };
+  if (isSub) {
+    state.subpageSelectedSlots = [slot];
+    state.subpageLastClicked = slot;
+  } else {
+    state.selectedSlots = [slot];
+    state.lastClickedSlot = slot;
+  }
+  renderPreview();
+  renderButtonSettings(true);
+}
+
 function addSlot(pos) {
   if (isConfigLocked()) return;
   var c = ctx();
+  if (pos < 0 || pos >= c.maxSlots || c.grid[pos] !== 0) return;
   if (c.isSub) {
     var sp = getSubpage(state.editingSubpage);
     var newSlot = subpageFirstFreeSlot(sp);
-    while (sp.buttons.length < newSlot) {
-      sp.buttons.push(emptyButtonConfig());
-    }
-    sp.grid[pos] = newSlot;
-    sp.order = serializeSubpageGrid(sp);
-    saveSubpageConfig(state.editingSubpage);
-    state.subpageSelectedSlots = [newSlot];
-    state.subpageLastClicked = newSlot;
-    renderPreview();
-    renderButtonSettings(true);
+    beginNewCardDraft(pos, newSlot, true);
   } else {
     var slot = firstFreeSlot();
     if (slot < 0) return;
-    state.grid[pos] = slot;
-    postText(entityName("button_order"), serializeGrid(state.grid));
-    state.selectedSlots = [slot];
-    state.lastClickedSlot = slot;
-    renderPreview();
-    renderButtonSettings(true);
+    beginNewCardDraft(pos, slot, false);
   }
 }
 
@@ -800,15 +882,31 @@ function addSingleCardMenuItems(slot) {
   addCtxItem("delete", "Delete", function () { deleteSlot(slot); }, true);
 }
 
+function addClockBarSelectionMenuItems(item) {
+  if (clockBarItemHasSettings(item)) {
+    addCtxItem("pencil", "Edit " + clockBarItemLabel(item), function () {
+      setClockBarItemSelected(item, true);
+    });
+    addCtxDivider();
+  }
+  addCtxItem("delete", "Delete", function () {
+    deleteClockBarItem(item);
+    renderButtonSettings();
+  }, true);
+}
+
 function showSelectionMenu(e) {
   if (isConfigLocked()) return;
   hideContextMenu();
   var c = ctx();
-  if (!c.selected.length) return;
+  var clockBarItem = state.clockBarSelectedItem || "";
+  if (!clockBarItem && !c.selected.length) return;
 
   ctxMenu = document.createElement("div");
   ctxMenu.className = "sp-ctx-menu";
-  if (c.selected.length > 1) {
+  if (clockBarItem) {
+    addClockBarSelectionMenuItems(clockBarItem);
+  } else if (c.selected.length > 1) {
     addBulkCardMenuItems(c.selected.slice());
   } else {
     addSingleCardMenuItems(c.selected[0]);
@@ -896,6 +994,25 @@ function showEmptySlotMenu(e, pos) {
   }
   document.body.appendChild(ctxMenu);
   positionMenu(ctxMenu, e);
+}
+
+function showClockBarAddMenu(e, section) {
+  if (isConfigLocked()) return;
+  hideContextMenu();
+  if (CLOCK_BAR_SECTIONS.indexOf(section) === -1) return;
+  state.clockBarAddDraft = {
+    section: section,
+    item: "",
+    temperatureEntity: "",
+    temperatureDegreeSymbolOn: state.temperatureDegreeSymbolOn,
+  };
+  state.clockBarSelectedItem = "";
+  state.settingsDraft = null;
+  ctx().setSelected([]);
+  ctx().setLastClicked(-1);
+  updateClockBarItemUi();
+  renderPreview();
+  renderButtonSettings(true);
 }
 
 function hideContextMenu() {

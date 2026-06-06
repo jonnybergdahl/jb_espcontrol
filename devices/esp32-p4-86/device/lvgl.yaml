@@ -15,22 +15,79 @@ lvgl:
     widgets:
       # Indoor/outdoor temperature (top-left)
       - label:
-          text: "-°C / -°C"
+          text: "-°C"
           id: temperatures
-          text_font: font_roboto_regular_28_default
+          text_font: font_text_body
           align: top_left
           x: 12
-          y: 13
+          y: 17
+          text_color: 0xFFFFFF
+          hidden: true
+      - label:
+          text: "-°C"
+          id: temperature_2
+          text_font: font_text_body
+          align: top_left
+          x: 0
+          y: 0
+          text_color: 0xFFFFFF
+          hidden: true
+      - label:
+          text: "-°C"
+          id: temperature_3
+          text_font: font_text_body
+          align: top_left
+          x: 0
+          y: 0
+          text_color: 0xFFFFFF
+          hidden: true
+      - label:
+          text: "-°C"
+          id: temperature_4
+          text_font: font_text_body
+          align: top_left
+          x: 0
+          y: 0
+          text_color: 0xFFFFFF
+          hidden: true
+      - label:
+          text: "-°C"
+          id: temperature_5
+          text_font: font_text_body
+          align: top_left
+          x: 0
+          y: 0
+          text_color: 0xFFFFFF
+          hidden: true
+      - label:
+          text: "-°C"
+          id: temperature_6
+          text_font: font_text_body
+          align: top_left
+          x: 0
+          y: 0
           text_color: 0xFFFFFF
           hidden: true
       # Clock (top-center, updated every minute by time.yaml)
       - label:
           text: "--:--"
           id: display_time
-          text_font: font_roboto_regular_28_default
+          text_font: font_text_body
           align: top_mid
           x: 0
-          y: 13
+          y: 17
+          text_align: center
+          text_color: 0xFFFFFF
+          hidden: true
+
+      # Weather status (small icon in the clock bar)
+      - label:
+          text: "\U000F0590"
+          id: clock_bar_weather_icon_label
+          text_font: font_icon_status
+          align: top_right
+          x: -20
+          y: 10
           text_align: center
           text_color: 0xFFFFFF
           hidden: true
@@ -40,7 +97,7 @@ lvgl:
           id: network_status_button
           align: top_right
           x: -20
-          y: 6
+          y: 10
           width: 44
           height: 42
           bg_opa: 0%
@@ -54,7 +111,7 @@ lvgl:
             - label:
                 id: network_status_icon_label
                 text: "\U000F0928"
-                text_font: font_mdi_26_network
+                text_font: font_icon_status
                 align: center
                 text_align: center
                 text_color: 0xFFFFFF
@@ -72,7 +129,7 @@ lvgl:
         type: grid
         grid_columns: [FR(1), FR(1), FR(1)]
         grid_rows: [FR(1), FR(1), FR(1)]
-        pad_row: 15
+        pad_row: 10
         pad_column: 15
       width: 100%
       bg_color: Black

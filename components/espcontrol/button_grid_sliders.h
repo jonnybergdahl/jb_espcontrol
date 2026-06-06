@@ -65,6 +65,7 @@ constexpr lv_coord_t MEDIA_VOLUME_CONTROLS_GAP_REF_PX = DISPLAY_MODAL_CONTROLS_G
 constexpr lv_coord_t MEDIA_VOLUME_CONTROLS_DOWN_REF_PX = DISPLAY_MODAL_CONTROLS_DOWN_REF_PX;
 constexpr lv_coord_t MEDIA_VOLUME_TITLE_GAP_REF_PX = DISPLAY_MODAL_TITLE_GAP_REF_PX;
 constexpr lv_coord_t MEDIA_VOLUME_UNIT_Y_REF_PX = -22;
+constexpr lv_coord_t MEDIA_VOLUME_JC4880P443_BUTTON_REF_PX = 96;
 
 struct MediaVolumeCtx {
   std::string entity_id;
@@ -113,6 +114,18 @@ inline MediaVolumeModalUi &media_volume_modal_ui() {
 
 inline lv_coord_t media_volume_card_radius(MediaVolumeCtx *ctx) {
   return control_modal_card_radius(ctx ? ctx->btn : nullptr);
+}
+
+inline ControlModalLayout media_volume_step_button_layout(const ControlModalLayout &layout) {
+  ControlModalLayout controls_layout = layout;
+  if (control_modal_uses_compact_portrait_tuning(layout)) {
+    controls_layout.btn_size = control_modal_scaled_px(
+      MEDIA_VOLUME_JC4880P443_BUTTON_REF_PX, layout.short_side);
+    controls_layout.controls_center_y = layout.arc_size / 2 -
+      controls_layout.btn_size / 2 - layout.inset +
+      control_modal_controls_down_px(layout);
+  }
+  return controls_layout;
 }
 
 inline void slider_fit_to_button(lv_obj_t *slider, lv_obj_t *btn, bool horizontal) {
@@ -307,12 +320,12 @@ inline const char *slider_icon_on(const std::string &type, const std::string &en
 
 inline void setup_cover_toggle_card(BtnSlot &s, const ParsedCfg &p) {
   lv_label_set_text(s.icon_lbl, slider_icon_off(p.type, p.entity, p.icon));
-  lv_label_set_text(s.text_lbl, p.label.empty() ? "Cover" : p.label.c_str());
+  lv_label_set_text(s.text_lbl, p.label.empty() ? espcontrol_i18n("Cover") : p.label.c_str());
 }
 
 inline void setup_cover_command_card(BtnSlot &s, const ParsedCfg &p) {
   lv_label_set_text(s.icon_lbl, slider_icon_off(p.type, p.entity, p.icon));
-  lv_label_set_text(s.text_lbl, p.label.empty() ? "Cover" : p.label.c_str());
+  lv_label_set_text(s.text_lbl, p.label.empty() ? espcontrol_i18n("Cover") : p.label.c_str());
   apply_push_button_transition(s.btn);
 }
 
@@ -433,6 +446,7 @@ inline void subscribe_slider_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
       entity_id.c_str());
     return;
   }
+  register_ha_control_availability(btn_ptr, slider);
   SliderCtx *sctx = (SliderCtx *)lv_obj_get_user_data(slider);
   lv_obj_t *fill = sctx ? sctx->fill : nullptr;
   bool horiz = sctx ? sctx->horizontal : false;
@@ -582,6 +596,7 @@ inline void subscribe_light_temp_state(lv_obj_t *btn_ptr, lv_obj_t *slider,
                                         const std::string &entity_id,
                                         int /*min_k*/, int /*max_k*/, bool kelvin_color) {
   if (!slider || entity_id.empty()) return;
+  register_ha_control_availability(btn_ptr, slider);
   SliderCtx *sctx = (SliderCtx *)lv_obj_get_user_data(slider);
   // Track on/off so kelvin updates can be ignored once the light is known off
   // while still handling the initial case where HA sends color_temp before state.
@@ -713,16 +728,16 @@ inline const char *media_default_icon(const std::string &mode,
 }
 
 inline std::string media_default_label(const std::string &mode) {
-  if (mode == "previous") return "Previous";
-  if (mode == "next") return "Next";
-  if (mode == "volume") return "Volume";
-  if (mode == "position") return "Position";
-  if (mode == "play_pause") return "Play/Pause";
-  return "Media";
+  if (mode == "previous") return espcontrol_i18n(std::string("Previous"));
+  if (mode == "next") return espcontrol_i18n(std::string("Next"));
+  if (mode == "volume") return espcontrol_i18n(std::string("Volume"));
+  if (mode == "position") return espcontrol_i18n(std::string("Position"));
+  if (mode == "play_pause") return espcontrol_i18n(std::string("Play/Pause"));
+  return espcontrol_i18n(std::string("Media"));
 }
 
 inline std::string media_label(const ParsedCfg &p) {
-  return p.label.empty() ? std::string("Volume") : p.label;
+  return p.label.empty() ? espcontrol_i18n(std::string("Volume")) : p.label;
 }
 
 inline std::string media_action_label(const ParsedCfg &p, const std::string &mode) {
@@ -878,7 +893,8 @@ inline void media_volume_layout_modal(MediaVolumeCtx *ctx) {
 
   control_modal_apply_back_button_layout(ui.back_btn, layout);
   control_modal_apply_arc_layout(ui.arc, layout, ctx->width_compensation_percent);
-  control_modal_apply_step_buttons_layout(ui.minus_btn, ui.plus_btn, layout);
+  control_modal_apply_step_buttons_layout(
+    ui.minus_btn, ui.plus_btn, media_volume_step_button_layout(layout));
   lv_obj_set_style_translate_y(ui.pct_unit_lbl,
     control_modal_scaled_px(MEDIA_VOLUME_UNIT_Y_REF_PX, layout.short_side), LV_PART_MAIN);
   lv_obj_align(ui.title_lbl, LV_ALIGN_CENTER, 0, title_center_y);
@@ -938,7 +954,7 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   }, LV_EVENT_VALUE_CHANGED, nullptr);
 
   ui.title_lbl = lv_label_create(ui.panel);
-  lv_label_set_text(ui.title_lbl, "Volume");
+  lv_label_set_text(ui.title_lbl, espcontrol_i18n("Volume"));
   lv_obj_set_style_text_color(ui.title_lbl, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.title_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (ctx->label_font) lv_obj_set_style_text_font(ui.title_lbl, ctx->label_font, LV_PART_MAIN);

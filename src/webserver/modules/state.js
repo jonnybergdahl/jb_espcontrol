@@ -1,10 +1,44 @@
 // ── State ──────────────────────────────────────────────────────────────
 
 var NTP_SERVER_DEFAULTS = ["0.pool.ntp.org", "1.pool.ntp.org", "2.pool.ntp.org"];
-var MONTH_NAME_DEFAULTS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December"
-];
+var LANGUAGE_LABELS = {
+  cs: "Čeština (Czech)",
+  da: "Dansk (Danish)",
+  de: "Deutsch (German)",
+  en: "English",
+  es: "Español (Spanish)",
+  fi: "Suomi (Finnish)",
+  fr: "Français (French)",
+  hu: "Magyar (Hungarian)",
+  it: "Italiano (Italian)",
+  nb: "Norsk bokmål (Norwegian Bokmål)",
+  nl: "Nederlands (Dutch)",
+  pl: "Polski (Polish)",
+  pt: "Português (Portuguese)",
+  "pt-br": "Português (Brasil) (Brazilian Portuguese)",
+  ro: "Română (Romanian)",
+  sk: "Slovenčina (Slovak)",
+  sl: "Slovenščina (Slovenian)",
+  sv: "Svenska (Swedish)",
+  tr: "Türkçe (Turkish)",
+  uk: "Українська (Ukrainian)"
+};
+var THEME_PRESETS = {
+  Light: { on: "0073FF", off: "CECECE", sensor: "DEDEDE" },
+  Dark: { on: "FF8C00", off: "313131", sensor: "212121" },
+};
+
+function defaultTheme() {
+  return "Dark";
+}
+
+function isEpaperPreview() {
+  return CFG && CFG.previewTheme === "epaper";
+}
+
+function epaperPreviewFillColor() {
+  return normalizeTheme(state.theme) === "Light" ? "FFFFFF" : "000000";
+}
 
 function defaultTimezoneOptions() {
   return (CFG && Array.isArray(CFG.timezoneOptions)) ? CFG.timezoneOptions.slice() : [];
@@ -20,9 +54,11 @@ var state = {
   grid: [],
   sizes: {},
   buttons: [],
-  onColor: "FF8C00",
-  offColor: "313131",
-  sensorColor: "212121",
+  theme: defaultTheme(),
+  themeOptions: ["Light", "Dark"],
+  onColor: THEME_PRESETS[defaultTheme()].on,
+  offColor: THEME_PRESETS[defaultTheme()].off,
+  sensorColor: THEME_PRESETS[defaultTheme()].sensor,
   selectedSlots: [],
   lastClickedSlot: -1,
   activeTab: "screen",
@@ -32,8 +68,13 @@ var state = {
   _outdoorVal: null,
   indoorEntity: "",
   outdoorEntity: "",
+  clockBarTemperatureEntities: [],
+  _clockBarTemperatureEntitiesReceived: false,
   temperatureUnit: "Auto",
   clockBarOn: false,
+  clockBarTimeOn: true,
+  clockBarWeatherOn: false,
+  clockBarWeatherEntity: "",
   networkStatusOn: true,
   networkTransport: "wifi",
   wifiStrengthPercent: 100,
@@ -42,6 +83,14 @@ var state = {
   presenceEntity: "",
   mediaPlayerSleepPreventionOn: false,
   mediaPlayerSleepPreventionEntity: "",
+  coverArtScreensaverOn: false,
+  coverArtMediaPlayerEntity: "",
+  coverArtHomeAssistantUrl: "",
+  coverArtDelay: 10,
+  coverArtTrackOverlayDuration: 5,
+  coverArtProgressBarOn: true,
+  coverArtOpenMediaSubpageOn: false,
+  coverArtMediaSubpageTarget: "",
   screensaverMode: "disabled",
   _screensaverModeReceived: false,
   screensaverAction: "off",
@@ -70,14 +119,14 @@ var state = {
   scheduleClockTextColor: "FFFFFF",
   timezone: "UTC (GMT+0)",
   timezoneOptions: defaultTimezoneOptions(),
+  language: "en",
+  languageOptions: ["en", "cs", "da", "de", "es", "fi", "fr", "hu", "it", "nb", "nl", "pl", "pt", "pt-br", "ro", "sk", "sl", "sv", "tr", "uk"],
   clockFormat: "24h",
   clockFormatOptions: ["12h", "24h"],
   customNtpServers: false,
   ntpServer1: NTP_SERVER_DEFAULTS[0],
   ntpServer2: NTP_SERVER_DEFAULTS[1],
   ntpServer3: NTP_SERVER_DEFAULTS[2],
-  customMonthNames: false,
-  monthNames: MONTH_NAME_DEFAULTS.slice(),
   screenRotation: (CFG.features && CFG.features.screenRotationDefault) || "0",
   screenRotationOptions: (CFG.features && CFG.features.screenRotationOptions) || ["0", "90", "180", "270"],
   screenRotationDeviceOptions: null,
@@ -103,6 +152,13 @@ var state = {
   developerExperimentalFeatures: false,
   configLocked: false,
   configLockReason: "",
+  clockBarLayout: null,
+  clockBarSelectedItem: "",
+  clockBarAddDraft: null,
+  clockBarDragItem: "",
+  clockBarTempRestoreIndoor: false,
+  clockBarTempRestoreOutdoor: true,
+  clockBarTempRestoreEntities: [],
   subpages: {},
   subpageRaw: {},
   subpageSavePending: {},
@@ -115,7 +171,7 @@ var state = {
   entityNames: {},
 };
 
-for (var i = 0; i < NUM_SLOTS; i++) {
+for (var i = 0; i < TOTAL_SLOTS; i++) {
   state.grid.push(0);
   state.buttons.push({ entity: "", label: "", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "", precision: "", options: "" });
 }
@@ -187,6 +243,40 @@ function normalizeTemperatureUnit(value) {
   return EspControlModel.normalizeTemperatureUnit(value);
 }
 
+function normalizeLanguage(value) {
+  var language = String(value == null ? "" : value).trim().toLowerCase();
+  return language || "en";
+}
+
+function languageLabel(value) {
+  value = normalizeLanguage(value);
+  return LANGUAGE_LABELS[value] || value;
+}
+
+function languageOptionsWithFallback(options, selected) {
+  var list = uniqueOptions((options && options.length ? options : ["en"]).map(normalizeLanguage));
+  selected = normalizeLanguage(selected);
+  if (list.indexOf(selected) === -1) list.unshift(selected);
+  return list;
+}
+
+function appendLanguageOption(select, opt) {
+  var o = document.createElement("option");
+  o.value = normalizeLanguage(opt);
+  o.textContent = languageLabel(opt);
+  select.appendChild(o);
+}
+
+function syncLanguageSelect() {
+  if (!els.setLanguage) return;
+  state.languageOptions = languageOptionsWithFallback(state.languageOptions, state.language);
+  els.setLanguage.innerHTML = "";
+  state.languageOptions.forEach(function (opt) {
+    appendLanguageOption(els.setLanguage, opt);
+  });
+  els.setLanguage.value = normalizeLanguage(state.language);
+}
+
 function timezonePrefersFahrenheit(timezone) {
   var tz = getTzId(timezone || state.timezone);
   var fahrenheitZones = {
@@ -217,6 +307,65 @@ function temperatureUnitSymbol() {
 
 function clockBarTemperatureUnitSymbol() {
   return state.temperatureDegreeSymbolOn ? "\u00B0" : "";
+}
+
+var MAX_CLOCK_BAR_TEMPERATURES = 6;
+
+function normalizeClockBarTemperatureEntries(value) {
+  var input = Array.isArray(value) ? value : String(value || "").split(/[|,\n]/);
+  return input.map(function (entry) {
+    return String(entry || "").trim();
+  }).slice(0, MAX_CLOCK_BAR_TEMPERATURES);
+}
+
+function normalizeClockBarTemperatureEntities(value) {
+  var input = normalizeClockBarTemperatureEntries(value);
+  var out = [];
+  input.forEach(function (entry) {
+    if (entry && out.indexOf(entry) === -1) out.push(entry);
+  });
+  return out.slice(0, MAX_CLOCK_BAR_TEMPERATURES);
+}
+
+function serializeClockBarTemperatureEntities(list) {
+  return normalizeClockBarTemperatureEntities(list).join("|");
+}
+
+function legacyClockBarTemperatureEntities() {
+  var list = [];
+  if (state._outdoorOn && state.outdoorEntity) list.push(state.outdoorEntity);
+  if (state._indoorOn && state.indoorEntity) list.push(state.indoorEntity);
+  return normalizeClockBarTemperatureEntities(list);
+}
+
+function clockBarTemperatureEntries() {
+  var list = normalizeClockBarTemperatureEntries(state.clockBarTemperatureEntities);
+  if (!list.length && !state._clockBarTemperatureEntitiesReceived) return legacyClockBarTemperatureEntities();
+  return list;
+}
+
+function clockBarTemperatureEntities() {
+  return normalizeClockBarTemperatureEntities(clockBarTemperatureEntries());
+}
+
+function applyClockBarTemperatureEntities(list, postDevice) {
+  state.clockBarTemperatureEntities = normalizeClockBarTemperatureEntries(list);
+  state._clockBarTemperatureEntitiesReceived = true;
+  var configured = clockBarTemperatureEntities();
+  state._outdoorOn = configured.length > 0;
+  state._indoorOn = configured.length > 1;
+  state.outdoorEntity = configured[0] || "";
+  state.indoorEntity = configured[1] || "";
+  if (postDevice) {
+    postClockBarTemperatureEntities(serializeClockBarTemperatureEntities(state.clockBarTemperatureEntities));
+    postSwitch(entityName("outdoor_temp_enable"), state._outdoorOn);
+    postSwitch(entityName("indoor_temp_enable"), state._indoorOn);
+    postText(entityName("outdoor_temp_entity"), state.outdoorEntity);
+    postText(entityName("indoor_temp_entity"), state.indoorEntity);
+  }
+  syncTemperatureUi();
+  updateTempPreview();
+  updateClockBarItemUi();
 }
 
 function appendScreenRotationOption(select, opt) {
@@ -278,29 +427,16 @@ function normalizeNtpServer(value, fallback) {
   return EspControlModel.normalizeNtpServer(value, fallback);
 }
 
-function normalizeMonthNames(value) {
-  return EspControlModel.normalizeMonthNames(value);
-}
-
-function serializeMonthNames(value) {
-  return EspControlModel.serializeMonthNames(value);
-}
-
-function hasCustomMonthNames() {
-  var names = normalizeMonthNames(state.monthNames);
-  for (var i = 0; i < 12; i++) {
-    if (names[i] !== MONTH_NAME_DEFAULTS[i]) return true;
-  }
-  return false;
-}
-
-function resetMonthNamesToDefaults() {
-  state.monthNames = MONTH_NAME_DEFAULTS.slice();
-}
-
 function monthNameForIndex(index) {
-  var names = normalizeMonthNames(state.monthNames);
-  return names[index] || MONTH_NAME_DEFAULTS[index] || "";
+  var monthIndex = parseInt(index, 10);
+  if (!isFinite(monthIndex) || monthIndex < 0 || monthIndex > 11) return "Date";
+  try {
+    return new Intl.DateTimeFormat(normalizeLanguage(state.language), { month: "long" })
+      .format(new Date(Date.UTC(2000, monthIndex, 1)));
+  } catch (_) {
+    return new Intl.DateTimeFormat("en", { month: "long" })
+      .format(new Date(Date.UTC(2000, monthIndex, 1)));
+  }
 }
 
 function hasCustomNtpServers() {
@@ -470,6 +606,11 @@ function syncScreenScheduleUi() {
 }
 
 function syncTemperatureUi() {
+  if (els.setClockBarTemperatureEntity && isClockBarTemperatureItem(state.clockBarSelectedItem)) {
+    var index = clockBarTemperatureItemIndex(state.clockBarSelectedItem);
+    var list = clockBarTemperatureEntries();
+    syncInput(els.setClockBarTemperatureEntity, list[index] || "");
+  }
   if (els.setIndoorToggle) els.setIndoorToggle.checked = !!state._indoorOn;
   if (els.setIndoorField) {
     els.setIndoorField.className = "sp-cond-field" + (state._indoorOn ? " sp-visible" : "");
@@ -478,6 +619,10 @@ function syncTemperatureUi() {
   if (els.setOutdoorField) {
     els.setOutdoorField.className = "sp-cond-field" + (state._outdoorOn ? " sp-visible" : "");
   }
+}
+
+function syncClockBarWeatherUi() {
+  syncInput(els.setClockBarWeatherEntity, state.clockBarWeatherEntity);
 }
 
 function syncNtpServerUi() {
@@ -493,27 +638,58 @@ function syncNtpServerUi() {
   syncInput(els.setNtpServer3, state.ntpServer3);
 }
 
-function syncMonthNameUi() {
-  state.monthNames = normalizeMonthNames(state.monthNames);
-  state.customMonthNames = !!state.customMonthNames || hasCustomMonthNames();
-  if (els.setCustomMonthNamesToggle) {
-    els.setCustomMonthNamesToggle.checked = !!state.customMonthNames;
-  }
-  if (els.setMonthNameFields) {
-    els.setMonthNameFields.className =
-      "sp-field-stack" + (state.customMonthNames ? "" : " sp-hidden");
-  }
-  if (els.setMonthNameInputs) {
-    for (var i = 0; i < els.setMonthNameInputs.length; i++) {
-      syncInput(els.setMonthNameInputs[i], state.monthNames[i]);
+function normalizeTheme(value) {
+  return THEME_PRESETS[value] ? value : defaultTheme();
+}
+
+function syncThemeUi() {
+  if (els.setTheme) els.setTheme.value = normalizeTheme(state.theme);
+  if (els.root) els.root.setAttribute("data-screen-theme", normalizeTheme(state.theme).toLowerCase());
+}
+
+function syncColorUi() {
+  if (els.setOnColor && els.setOnColor._syncColor) els.setOnColor._syncColor(state.onColor);
+  if (els.setOffColor && els.setOffColor._syncColor) els.setOffColor._syncColor(state.offColor);
+  if (els.setSensorColor && els.setSensorColor._syncColor) els.setSensorColor._syncColor(state.sensorColor);
+}
+
+function applyThemePreset(theme, postChanges) {
+  state.theme = normalizeTheme(theme);
+  var preset = THEME_PRESETS[state.theme];
+  state.onColor = preset.on;
+  state.offColor = preset.off;
+  state.sensorColor = preset.sensor;
+  syncThemeUi();
+  syncColorUi();
+  renderPreview();
+  if (postChanges) {
+    postSelect(entityName("screen_theme"), state.theme);
+    if (!isEpaperPreview()) {
+      postText(entityName("button_on_color"), state.onColor);
+      postText(entityName("button_off_color"), state.offColor);
+      postText(entityName("sensor_card_color"), state.sensorColor);
     }
   }
+}
+
+function syncThemeFromDevice(theme, options) {
+  state.theme = normalizeTheme(theme);
+  if (options && Array.isArray(options)) state.themeOptions = options;
+  var preset = THEME_PRESETS[state.theme];
+  state.onColor = preset.on;
+  state.offColor = preset.off;
+  state.sensorColor = preset.sensor;
+  syncThemeUi();
+  syncColorUi();
+  renderPreview();
 }
 
 function syncClockBarUi() {
   syncPreviewGridTop();
   if (els.topbar) els.topbar.className = "sp-topbar" + (state.clockBarOn ? "" : " sp-hidden");
   if (els.setClockBarToggle) els.setClockBarToggle.checked = !!state.clockBarOn;
+  if (els.setClockBarTimeToggle) els.setClockBarTimeToggle.checked = !!state.clockBarTimeOn;
+  if (els.setClockBarWeatherToggle) els.setClockBarWeatherToggle.checked = !!state.clockBarWeatherOn;
   if (els.setNetworkStatusToggle) {
     els.setNetworkStatusToggle.checked = !!state.networkStatusOn;
   }
@@ -526,6 +702,9 @@ function syncClockBarUi() {
   if (els.setSubpageChevronToggle) {
     els.setSubpageChevronToggle.checked = !!state.subpageChevronsOn;
   }
+  updateClockBarItemUi();
+  syncClockBarWeatherUi();
+  updateWeatherPreview();
   updateNetworkPreview();
   updateTempPreview();
 }
