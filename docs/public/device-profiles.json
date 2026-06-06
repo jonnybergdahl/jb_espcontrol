@@ -93,8 +93,8 @@
       "chipFamily": "ESP32-S3",
       "relays": 3,
       "rotation": true,
-<<<<<<< HEAD
-      "ethernetManualInstall": false
+      "ethernetManualInstall": false,
+      "subpages": true
     },
     {
       "slug": "wireless-tag-wt32-sc01-plus",
@@ -112,11 +112,8 @@
       "chipFamily": "ESP32-S3",
       "relays": 0,
       "rotation": true,
-      "ethernetManualInstall": false
-=======
       "ethernetManualInstall": false,
       "subpages": true
->>>>>>> upstream/main
     }
   ]
 }
