@@ -100,3 +100,30 @@ font:
     extras:
       - file: "gfonts://Heebo"
         glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
+
+  # Cover art title (34px)
+  - file: "gfonts://Roboto@Light"
+    id: font_cover_art_title
+    size: 34
+    bpp: 4
+    glyphs: !include ../../../common/assets/text_glyphs.yaml
+    extras:
+      - file: "gfonts://Heebo@Light"
+        glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
+
+  # Cover art artist (22px)
+  - file: "gfonts://Roboto"
+    id: font_cover_art_artist
+    size: 22
+    bpp: 4
+    glyphs: !include ../../../common/assets/text_glyphs.yaml
+    extras:
+      - file: "gfonts://Heebo"
+        glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
+
+  # Cover art time (18px)
+  - file: "gfonts://Roboto"
+    id: font_cover_art_time
+    size: 18
+    bpp: 4
+    glyphs: "0123456789:/"
