@@ -253,7 +253,7 @@ export default defineConfig({
             url: hostname,
             author: {
               '@type': 'Person',
-              name: .jonnybergdahl.,
+              name: 'jonnybergdahl',
               url: 'https://github.com/jonnybergdahl',
             },
             offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
@@ -309,7 +309,7 @@ export default defineConfig({
         description,
         url: canonicalUrl,
         isPartOf: { '@id': `${hostname}#website` },
-        author: { '@type': 'Person', name: .jonnybergdahl., url: 'https://github.com/jonnybergdahl' },
+        author: { '@type': 'Person', name: 'jonnybergdahl', url: 'https://github.com/jonnybergdahl' },
       }
       if (isHowTo) {
         articleSchema.step =
