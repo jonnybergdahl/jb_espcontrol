@@ -24,6 +24,51 @@ lvgl:
           y: 6
           text_color: 0xFFFFFF
           hidden: true
+      - label:
+          text: "-°C"
+          id: temperature_2
+          text_font: clockbar_font_sm
+          align: top_left
+          x: 0
+          y: 0
+          text_color: 0xFFFFFF
+          hidden: true
+      - label:
+          text: "-°C"
+          id: temperature_3
+          text_font: clockbar_font_sm
+          align: top_left
+          x: 0
+          y: 0
+          text_color: 0xFFFFFF
+          hidden: true
+      - label:
+          text: "-°C"
+          id: temperature_4
+          text_font: clockbar_font_sm
+          align: top_left
+          x: 0
+          y: 0
+          text_color: 0xFFFFFF
+          hidden: true
+      - label:
+          text: "-°C"
+          id: temperature_5
+          text_font: clockbar_font_sm
+          align: top_left
+          x: 0
+          y: 0
+          text_color: 0xFFFFFF
+          hidden: true
+      - label:
+          text: "-°C"
+          id: temperature_6
+          text_font: clockbar_font_sm
+          align: top_left
+          x: 0
+          y: 0
+          text_color: 0xFFFFFF
+          hidden: true
       # Clock (top-center, updated every minute by time.yaml)
       - label:
           text: "--:--"
@@ -31,6 +76,17 @@ lvgl:
           text_font: clockbar_font_sm
           align: top_mid
           x: 0
+          y: 6
+          text_align: center
+          text_color: 0xFFFFFF
+          hidden: true
+      # Weather status (small icon in the clock bar)
+      - label:
+          text: "\U000F0590"
+          id: clock_bar_weather_icon_label
+          text_font: network_status_font_sm
+          align: top_right
+          x: -50
           y: 6
           text_align: center
           text_color: 0xFFFFFF
